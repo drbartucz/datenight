@@ -1,0 +1,40 @@
+name: Verify Railway Deployment
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  verify-deployment:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for Railway to deploy
+        run: sleep 120
+
+      - name: Check deployment is live and has recent timestamp
+        env:
+          DEPLOY_URL: ${{ vars.RAILWAY_URL }}
+        run: |
+          if [ -z "$DEPLOY_URL" ]; then
+            echo "::error::RAILWAY_URL repository variable is not set. Set it to your Railway deployment URL (e.g. https://your-app.up.railway.app)"
+            exit 1
+          fi
+
+          echo "Fetching homepage from $DEPLOY_URL ..."
+          BODY=$(curl -sf --max-time 30 "$DEPLOY_URL") || {
+            echo "::error::Failed to reach $DEPLOY_URL"
+            exit 1
+          }
+
+          TODAY=$(date -u +%Y-%m-%d)
+          echo "Checking homepage for today's date: $TODAY"
+
+          if echo "$BODY" | grep -q "$TODAY"; then
+            echo "Deployment verified — homepage contains today's date ($TODAY)."
+          else
+            echo "::error::Homepage does not contain today's date ($TODAY). The deployment may be stale."
+            echo "--- Homepage snippet ---"
+            echo "$BODY" | grep -i "build:" || echo "(no Build: line found)"
+            exit 1
+          fi

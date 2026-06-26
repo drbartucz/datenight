@@ -4,7 +4,7 @@ import json
 import re
 import datetime
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from google import genai
@@ -26,6 +26,9 @@ app = FastAPI(title="Twin Cities Date Night API")
 
 # Ensure static directory exists
 os.makedirs("static", exist_ok=True)
+
+# Record server start time for deployment verification
+SERVER_START_TIME = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 class Venue(BaseModel):
     name: str
@@ -83,9 +86,12 @@ def discover_venues_api(client, directory, custom_details):
 
 @app.get("/")
 def get_index():
-    """Serves the front-end dashboard."""
+    """Serves the front-end dashboard with the current server start timestamp."""
     if os.path.exists("static/index.html"):
-        return FileResponse("static/index.html")
+        with open("static/index.html") as f:
+            html = f.read()
+        html = html.replace("{{SERVER_START_TIME}}", SERVER_START_TIME)
+        return HTMLResponse(html)
     return {"message": "Twin Cities Date Night API Running. Front-end static/index.html missing."}
 
 
