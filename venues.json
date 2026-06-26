@@ -58,5 +58,240 @@
         "name": "Trylon Cinema",
         "url": "trylon.org",
         "type": "Independent Cinema"
+    },
+    {
+        "name": "The Cedar Cultural Center",
+        "url": "https://thecedar.org/",
+        "type": "Music Promoters, Clubs & Major Arenas"
+    },
+    {
+        "name": "The Armory",
+        "url": "https://armorymn.com/",
+        "type": "Music Promoters, Clubs & Major Arenas"
+    },
+    {
+        "name": "The Fillmore Minneapolis",
+        "url": "https://www.livenation.com/venues/14488/the-fillmore-minneapolis",
+        "type": "Music Promoters, Clubs & Major Arenas"
+    },
+    {
+        "name": "Fine Line",
+        "url": "https://www.finelinemusic.com/",
+        "type": "Music Promoters, Clubs & Major Arenas"
+    },
+    {
+        "name": "The Skyway Theatre",
+        "url": "https://skywaytheatre.com/",
+        "type": "Music Promoters, Clubs & Major Arenas"
+    },
+    {
+        "name": "The Loft",
+        "url": "https://skywaytheatre.com/",
+        "type": "Music Promoters, Clubs & Major Arenas"
+    },
+    {
+        "name": "Dakota",
+        "url": "https://www.dakotacooks.com/",
+        "type": "Little-known, ethnic, or cultural theatre, music, and restaurants that host live events or have highly unique cultural dining experiences"
+    },
+    {
+        "name": "Berlin Minneapolis",
+        "url": "https://www.berlinmpls.com/",
+        "type": "Little-known, ethnic, or cultural theatre, music, and restaurants that host live events or have highly unique cultural dining experiences"
+    },
+    {
+        "name": "Green Room",
+        "url": "https://greenroommn.com/",
+        "type": "Music Promoters, Clubs & Major Arenas"
+    },
+    {
+        "name": "The White Squirrel Bar",
+        "url": "https://whitesquirrelbar.com/",
+        "type": "Music Promoters, Clubs & Major Arenas"
+    },
+    {
+        "name": "Amsterdam Bar and Hall",
+        "url": "https://amsterdambarandhall.com/",
+        "type": "Music Promoters, Clubs & Major Arenas"
+    },
+    {
+        "name": "Blues Saloon",
+        "url": "https://www.thebluessaloon.com/",
+        "type": "Little-known, ethnic, or cultural theatre, music, and restaurants that host live events or have highly unique cultural dining experiences"
+    },
+    {
+        "name": "Ginkgo Coffeehouse",
+        "url": "https://ginkgocoffee.com/",
+        "type": "Music Promoters, Clubs & Major Arenas"
+    },
+    {
+        "name": "MetroNOME Brewery",
+        "url": "https://metronomebrewery.com/",
+        "type": "Music Promoters, Clubs & Major Arenas"
+    },
+    {
+        "name": "Minnesota Music Cafe",
+        "url": "https://minnesotamusiccafe.com/",
+        "type": "Music Promoters, Clubs & Major Arenas"
+    },
+    {
+        "name": "Roy Wilkins Auditorium",
+        "url": "https://www.rivercentre.org/venues/roy-wilkins-auditorium",
+        "type": "Music Promoters, Clubs & Major Arenas"
+    },
+    {
+        "name": "331 Club",
+        "url": "https://331club.com/",
+        "type": "Music Promoters, Clubs & Major Arenas"
+    },
+    {
+        "name": "Underground Music Cafe & Event Space",
+        "url": "https://undergroundmusiccafe.com/",
+        "type": "Music Promoters, Clubs & Major Arenas"
+    },
+    {
+        "name": "Crooners Supper Club",
+        "url": "https://www.croonersloungemn.com/",
+        "type": "Little-known, ethnic, or cultural theatre, music, and restaurants that host live events or have highly unique cultural dining experiences"
+    },
+    {
+        "name": "Maxx Bar & Grill",
+        "url": "https://www.maxxbarandgrill.com/",
+        "type": "Music Promoters, Clubs & Major Arenas"
+    },
+    {
+        "name": "Moe's Restaurant & Bar",
+        "url": "https://www.moesamerican.com/",
+        "type": "Music Promoters, Clubs & Major Arenas"
+    },
+    {
+        "name": "The Cowles Center for Dance and the Performing Arts",
+        "url": "https://www.thecowlescenter.org/",
+        "type": "Performing Arts & Prestigious Theaters"
+    },
+    {
+        "name": "Dudley Riggs Theatre (Brave New Workshop)",
+        "url": "https://www.bravenewworkshop.com/",
+        "type": "Performing Arts & Prestigious Theaters"
+    },
+    {
+        "name": "Chanhassen Dinner Theatres",
+        "url": "https://chanhassendt.com/",
+        "type": "Little-known, ethnic, or cultural theatre, music, and restaurants that host live events or have highly unique cultural dining experiences"
+    },
+    {
+        "name": "Guthrie Theater",
+        "url": "https://www.guthrietheater.org/",
+        "type": "Performing Arts & Prestigious Theaters"
+    },
+    {
+        "name": "Ordway Center for the Performing Arts",
+        "url": "https://www.ordway.org/",
+        "type": "Performing Arts & Prestigious Theaters"
+    },
+    {
+        "name": "Children's Theatre Company",
+        "url": "https://childrenstheatre.org/",
+        "type": "Performing Arts & Prestigious Theaters"
+    },
+    {
+        "name": "Theater Latt\u00e9 Da",
+        "url": "https://www.theaterlatteda.com/",
+        "type": "Performing Arts & Prestigious Theaters"
+    },
+    {
+        "name": "The Jungle Theater",
+        "url": "https://www.jungletheater.org/",
+        "type": "Performing Arts & Prestigious Theaters"
+    },
+    {
+        "name": "Ten Thousand Things",
+        "url": "https://tenthousandthings.org/",
+        "type": "Performing Arts & Prestigious Theaters"
+    },
+    {
+        "name": "Playwrights' Center",
+        "url": "https://pwcenter.org/",
+        "type": "Performing Arts & Prestigious Theaters"
+    },
+    {
+        "name": "Saint Paul Conservatory for Performing Artists",
+        "url": "https://www.spcpa.org/",
+        "type": "Performing Arts & Prestigious Theaters"
+    },
+    {
+        "name": "Lyric Arts Main Street Stage",
+        "url": "https://www.lyricarts.org/",
+        "type": "Performing Arts & Prestigious Theaters"
+    },
+    {
+        "name": "Mounds View Community Theatre",
+        "url": "https://www.mvct.org/",
+        "type": "Performing Arts & Prestigious Theaters"
+    },
+    {
+        "name": "Benson Great Hall (Bethel University)",
+        "url": "https://www.bethel.edu/events/venues/benson-great-hall",
+        "type": "Performing Arts & Prestigious Theaters"
+    },
+    {
+        "name": "Riverview Theater",
+        "url": "https://www.riverviewtheater.com/",
+        "type": "Independent Cinema & Local Fairs"
+    },
+    {
+        "name": "Landmark's Lagoon Cinema",
+        "url": "https://www.landmarktheatres.com/minneapolis/lagoon-cinema",
+        "type": "Independent Cinema & Local Fairs"
+    },
+    {
+        "name": "The Parkway Theater",
+        "url": "https://theparkwaytheater.com/",
+        "type": "Independent Cinema & Local Fairs"
+    },
+    {
+        "name": "Twin Cities Film Fest",
+        "url": "https://twincitiesfilmfest.org/",
+        "type": "Independent Cinema & Local Fairs"
+    },
+    {
+        "name": "Hmong Freedom Festival",
+        "url": "https://hmongfreedomfestival.com/",
+        "type": "Independent Cinema & Local Fairs"
+    },
+    {
+        "name": "Art-A-Whirl",
+        "url": "https://nemaa.org/art-a-whirl/",
+        "type": "Independent Cinema & Local Fairs"
+    },
+    {
+        "name": "Twin Cities Pride Festival",
+        "url": "https://tcpride.org/",
+        "type": "Independent Cinema & Local Fairs"
+    },
+    {
+        "name": "Irish Fair of Minnesota",
+        "url": "https://www.irishfair.com/",
+        "type": "Independent Cinema & Local Fairs"
+    },
+    {
+        "name": "Saint Paul Art Crawl",
+        "url": "https://www.saintpaulartcrawl.org/",
+        "type": "Independent Cinema & Local Fairs"
+    },
+    {
+        "name": "Panda Fest Twin Cities",
+        "url": "https://www.pandafest.org/",
+        "type": "Independent Cinema & Local Fairs"
+    },
+    {
+        "name": "Floating Lanterns & Night Market Festival",
+        "url": "https://www.aeda-mn.org/nightmarket",
+        "type": "Independent Cinema & Local Fairs"
+    },
+    {
+        "name": "The Heights Theater",
+        "url": "https://heightstheater.com/",
+        "type": "Independent Cinema & Local Fairs"
     }
 ]
