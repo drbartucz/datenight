@@ -58,8 +58,103 @@ def get_gemini_client():
     return genai.Client()
 
 
-def manage_directory(directory):
-    """Allows manual updates (additions/deletions) to the source directory."""
+def discover_venues_via_gemini(client, directory):
+    """Uses Gemini to find new ethnic/cultural/under-represented venues and adds selected ones to the directory."""
+    print("\n--- Discover New Venues via Gemini ---")
+    custom_details = input(
+        "Specify any additional details (e.g., focus on theaters/music, specific locations, venue/event types)\n"
+        "or press Enter to perform a general search: "
+    ).strip()
+
+    print("\nQuerying Gemini for new Twin Cities cultural venues, theatres, and restaurants...")
+    
+    existing_names = [s["name"] for s in directory]
+    
+    focus_clause = f" Additional search focus/requirements: '{custom_details}'." if custom_details else ""
+    
+    prompt = (
+        "Discover new arts, culture, theatre, music, and dining venues in the Twin Cities (Minneapolis and Saint Paul, MN) "
+        f"that are NOT in this list of existing venues: {', '.join(existing_names)}.\n"
+        "Search for all venues you can, but especially focus on little-known, ethnic, or cultural theatre, music, and restaurants. "
+        "For dining and restaurants, ONLY list venues that host live events, performances, or have something really unique and special going on "
+        "(such as indigenous dining experiences, regular live music, cultural performances, or pop-up chef/event series)—do NOT list standard dining-only restaurants."
+        f"{focus_clause}\n"
+        "Return the discovered venues as a JSON list. Each venue object must have the following keys:\n"
+        "- 'name': Name of the venue/restaurant\n"
+        "- 'url': Official website URL\n"
+        "- 'type': Category (e.g., Cultural Theatre, Ethnic Restaurant, Jazz Club, etc.)\n\n"
+        "Ensure the output is valid JSON. Do not include any introductory or concluding text. Wrap the JSON in a markdown code block."
+    )
+    
+    try:
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                tools=[{"google_search": {}}],
+                temperature=0.3,
+            ),
+        )
+        json_text = response.text
+        
+        # Parse JSON
+        match = re.search(r'```json\s*(.*?)\s*```', json_text, re.DOTALL)
+        if match:
+            content = match.group(1)
+        else:
+            start = json_text.find('[')
+            end = json_text.rfind(']')
+            if start != -1 and end != -1:
+                content = json_text[start:end+1]
+            else:
+                content = json_text
+                
+        venues = json.loads(content)
+        
+        if not venues or not isinstance(venues, list):
+            print("No new venues found or failed to parse the response.")
+            return
+
+        print("\n--- Discovered Venues ---")
+        for idx, v in enumerate(venues, start=1):
+            print(f"{idx}. {v['name']} ({v['url']}) [{v['type']}]")
+            
+        print("\nOptions:")
+        print("Enter numbers separated by commas to add (e.g., '1,3,5')")
+        print("[A] Add all discovered venues")
+        print("[C] Cancel and return")
+        
+        choice = input("Select an option: ").strip().lower()
+        if choice == 'c':
+            print("Cancelled.")
+            return
+        elif choice == 'a':
+            added_count = 0
+            for v in venues:
+                if v['name'] not in [ex['name'] for ex in directory]:
+                    directory.append(v)
+                    added_count += 1
+            print(f"Successfully added {added_count} venues!")
+        else:
+            try:
+                indices = [int(i.strip()) - 1 for i in choice.split(",") if i.strip().isdigit()]
+                added_count = 0
+                for idx in indices:
+                    if 0 <= idx < len(venues):
+                        v = venues[idx]
+                        if v['name'] not in [ex['name'] for ex in directory]:
+                            directory.append(v)
+                            added_count += 1
+                print(f"Successfully added {added_count} venues!")
+            except Exception:
+                print("Invalid input format.")
+                
+    except Exception as e:
+        print(f"An error occurred during venue discovery: {e}")
+
+
+def manage_directory(client, directory):
+    """Allows manual updates (additions/deletions) to the source directory, including Gemini discovery."""
     while True:
         print("\n--- Current Twin Cities Event Directory ---")
         for idx, source in enumerate(directory, start=1):
@@ -68,9 +163,10 @@ def manage_directory(directory):
         print("\nOptions:")
         print("[A] Add a new source")
         print("[D] Delete a source")
+        print("[G] Discover new venues via Gemini")
         print("[M] Main Menu (Done modifying)")
 
-        choice = input("Select an option (A/D/M): ").strip().upper()
+        choice = input("Select an option (A/D/G/M): ").strip().upper()
 
         if choice == "A":
             name = input("Enter source/venue name: ").strip()
@@ -104,6 +200,9 @@ def manage_directory(directory):
                     print("Invalid index number.")
             except ValueError:
                 print("Please enter a valid number.")
+
+        elif choice == "G":
+            discover_venues_via_gemini(client, directory)
 
         elif choice == "M":
             break
@@ -558,7 +657,7 @@ def main():
         main_choice = input("Select an option (1-3): ").strip()
 
         if main_choice == "1":
-            manage_directory(directory)
+            manage_directory(client, directory)
         elif main_choice == "2":
             search_events_by_date(client, directory)
         elif main_choice == "3":
