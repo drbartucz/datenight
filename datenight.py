@@ -72,12 +72,29 @@ def load_directory(filename="venues.json"):
 
 
 def get_gemini_client():
-    """Initializes the Gemini client using environment variables."""
+    """Initializes the Gemini client using environment variables or a local .env file."""
     api_key = os.environ.get("GEMINI_API_KEY")
+    
+    # Load from .env if environment variable is not set
+    if not api_key and os.path.exists(".env"):
+        try:
+            with open(".env", "r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if line.startswith("GEMINI_API_KEY"):
+                        parts = line.split("=", 1)
+                        if len(parts) == 2:
+                            api_key = parts[1].strip().strip('"').strip("'")
+                            os.environ["GEMINI_API_KEY"] = api_key
+                            break
+        except Exception as e:
+            print(f"[Warning] Failed to read .env file: {e}")
+
     if not api_key:
         print("\n[Error] GEMINI_API_KEY environment variable not found.")
-        print("Please set it using: export GEMINI_API_KEY='your_key'")
+        print("Please set it in your environment or a local .env file.")
         sys.exit(1)
+        
     return genai.Client()
 
 
