@@ -1,0 +1,62 @@
+[
+    {
+        "name": "Racket MN",
+        "url": "racketmn.com",
+        "type": "Independent Media"
+    },
+    {
+        "name": "Mpls.St.Paul Magazine",
+        "url": "mspmag.com",
+        "type": "Magazine"
+    },
+    {
+        "name": "First Avenue & Venues",
+        "url": "first-avenue.com",
+        "type": "Music Promoter"
+    },
+    {
+        "name": "AXS Minneapolis",
+        "url": "axs.com/MN-Minneapolis/browse",
+        "type": "Ticketing/Promoter"
+    },
+    {
+        "name": "Hennepin Arts (Orpheum/State)",
+        "url": "hennepinarts.org",
+        "type": "Theater/Broadway"
+    },
+    {
+        "name": "Penumbra Theatre",
+        "url": "penumbratheatre.org",
+        "type": "Theater"
+    },
+    {
+        "name": "Mixed Blood Theatre",
+        "url": "mixedblood.com",
+        "type": "Theater"
+    },
+    {
+        "name": "Minnesota Opera",
+        "url": "mnopera.org",
+        "type": "Classical/Opera"
+    },
+    {
+        "name": "Minnesota Orchestra",
+        "url": "minnesotaorchestra.org",
+        "type": "Classical"
+    },
+    {
+        "name": "St. Paul Chamber Orchestra (SPCO)",
+        "url": "thespco.org",
+        "type": "Classical"
+    },
+    {
+        "name": "MSP Film Society (The Main)",
+        "url": "mspfilm.org",
+        "type": "Independent Cinema"
+    },
+    {
+        "name": "Trylon Cinema",
+        "url": "trylon.org",
+        "type": "Independent Cinema"
+    }
+]

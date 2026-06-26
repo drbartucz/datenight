@@ -48,6 +48,29 @@ DEFAULT_DIRECTORY = [
 ]
 
 
+def save_directory(directory, filename="venues.json"):
+    """Saves the venue directory to a local JSON file."""
+    try:
+        with open(filename, "w", encoding="utf-8") as f:
+            json.dump(directory, f, indent=4)
+    except Exception as e:
+        print(f"Error saving venue directory: {e}")
+
+
+def load_directory(filename="venues.json"):
+    """Loads the venue directory from a local JSON file. Falls back to default if the file is missing or invalid."""
+    if os.path.exists(filename):
+        try:
+            with open(filename, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception as e:
+            print(f"Error loading venue directory: {e}. Falling back to default list.")
+    
+    # If the file doesn't exist or failed to load, populate it with the defaults
+    save_directory(DEFAULT_DIRECTORY, filename)
+    return DEFAULT_DIRECTORY.copy()
+
+
 def get_gemini_client():
     """Initializes the Gemini client using environment variables."""
     api_key = os.environ.get("GEMINI_API_KEY")
@@ -70,19 +93,30 @@ def discover_venues_via_gemini(client, directory):
     
     existing_names = [s["name"] for s in directory]
     
-    focus_clause = f" Additional search focus/requirements: '{custom_details}'." if custom_details else ""
+    if not custom_details:
+        prompt_instructions = (
+            "Discover new venues in the Twin Cities (Minneapolis and Saint Paul, MN) across these categories:\n"
+            "- 'Media, Newspapers & Independent Aggregators'\n"
+            "- 'Music Promoters, Clubs & Major Arenas'\n"
+            "- 'Performing Arts & Prestigious Theaters'\n"
+            "- 'Independent Cinema & Local Fairs'\n"
+            "- Little-known, ethnic, or cultural theatre, music, and restaurants that host live events or have highly unique cultural dining experiences (standard dining-only restaurants are excluded).\n"
+        )
+    else:
+        prompt_instructions = (
+            "Discover new arts, culture, theatre, music, and dining venues in the Twin Cities (Minneapolis and Saint Paul, MN).\n"
+            "Search for all venues you can, but especially focus on little-known, ethnic, or cultural theatre, music, and restaurants.\n"
+            "For dining and restaurants, ONLY list venues that host live events, performances, or have something really unique and special going on (such as indigenous dining experiences, regular live music, cultural performances, or pop-up chef/event series)—do NOT list standard dining-only restaurants.\n"
+            f"Additional search focus/requirements: '{custom_details}'.\n"
+        )
     
     prompt = (
-        "Discover new arts, culture, theatre, music, and dining venues in the Twin Cities (Minneapolis and Saint Paul, MN) "
-        f"that are NOT in this list of existing venues: {', '.join(existing_names)}.\n"
-        "Search for all venues you can, but especially focus on little-known, ethnic, or cultural theatre, music, and restaurants. "
-        "For dining and restaurants, ONLY list venues that host live events, performances, or have something really unique and special going on "
-        "(such as indigenous dining experiences, regular live music, cultural performances, or pop-up chef/event series)—do NOT list standard dining-only restaurants."
-        f"{focus_clause}\n"
+        f"{prompt_instructions}\n"
+        f"The discovered venues must NOT be in this list of existing venues: {', '.join(existing_names)}.\n"
         "Return the discovered venues as a JSON list. Each venue object must have the following keys:\n"
         "- 'name': Name of the venue/restaurant\n"
         "- 'url': Official website URL\n"
-        "- 'type': Category (e.g., Cultural Theatre, Ethnic Restaurant, Jazz Club, etc.)\n\n"
+        "- 'type': Category (assign to one of the category groupings above, or a similarly descriptive type)\n\n"
         "Ensure the output is valid JSON. Do not include any introductory or concluding text. Wrap the JSON in a markdown code block."
     )
     
@@ -134,6 +168,8 @@ def discover_venues_via_gemini(client, directory):
                 if v['name'] not in [ex['name'] for ex in directory]:
                     directory.append(v)
                     added_count += 1
+            if added_count > 0:
+                save_directory(directory)
             print(f"Successfully added {added_count} venues!")
         else:
             try:
@@ -145,6 +181,8 @@ def discover_venues_via_gemini(client, directory):
                         if v['name'] not in [ex['name'] for ex in directory]:
                             directory.append(v)
                             added_count += 1
+                if added_count > 0:
+                    save_directory(directory)
                 print(f"Successfully added {added_count} venues!")
             except Exception:
                 print("Invalid input format.")
@@ -180,6 +218,7 @@ def manage_directory(client, directory):
                 confirm = input("Proceed? (y/n): ").strip().lower()
                 if confirm == "y":
                     directory.append({"name": name, "url": url, "type": category})
+                    save_directory(directory)
                     print("Source added successfully!")
             else:
                 print("Invalid input. Name and URL are required.")
@@ -195,6 +234,7 @@ def manage_directory(client, directory):
                     confirm = input("Are you absolutely sure? (y/n): ").strip().lower()
                     if confirm == "y":
                         directory.pop(idx_to_del)
+                        save_directory(directory)
                         print("Source removed successfully.")
                 else:
                     print("Invalid index number.")
@@ -644,7 +684,7 @@ def search_events_by_date(client, directory):
 
 def main():
     client = get_gemini_client()
-    directory = DEFAULT_DIRECTORY.copy()
+    directory = load_directory()
 
     while True:
         print("\n=========================================")
