@@ -479,7 +479,7 @@ def generate_html_file(events, nice_date, filename):
         </div>
 
         <footer class="footer">
-            <p>Generated with Gemini &bull; Twin Cities Event Portal</p>
+            <p>Date Night! &bull; Copyright John Bartucz</p>
         </footer>
     </div>
 </body>
