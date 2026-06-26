@@ -14,6 +14,7 @@ from google.genai import types
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from datenight import (
     get_gemini_client,
+    get_anthropic_client,
     resolve_date,
     fetch_events_json,
     parse_events,
@@ -73,15 +74,43 @@ def discover_venues_api(client, directory, custom_details):
         "Ensure the output is valid JSON. Do not include any introductory or concluding text. Wrap the JSON in a markdown code block."
     )
     
-    response = client.models.generate_content(
-        model="gemini-2.5-flash",
-        contents=prompt,
-        config=types.GenerateContentConfig(
-            tools=[{"google_search": {}}],
-            temperature=0.3,
-        ),
-    )
-    return parse_events(response.text)
+    try:
+        if not client:
+            raise ValueError("Gemini client is not initialized")
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                tools=[{"google_search": {}}],
+                temperature=0.3,
+            ),
+        )
+        return parse_events(response.text)
+    except Exception as e:
+        print(f"[Warning] Gemini venue discovery (API) failed: {e}. Falling back to Claude...")
+        try:
+            anthropic_client = get_anthropic_client()
+            if anthropic_client:
+                claude_prompt = (
+                    f"You are a local Twin Cities concierge analyzer. Since you do not have live web search access, please use your pre-trained knowledge to discover new venues.\n"
+                    f"{prompt_instructions}\n"
+                    f"The discovered venues must NOT be in this list of existing venues: {', '.join(existing_names)}.\n"
+                    "Return the discovered venues as a JSON list. Each venue object must have the following keys:\n"
+                    "- 'name': Name of the venue/restaurant\n"
+                    "- 'url': Official website URL\n"
+                    "- 'type': Category (assign to one of the category groupings above, or a similarly descriptive type)\n\n"
+                    "Ensure the output is valid JSON. Do not include any introductory or concluding text. Wrap the JSON in a markdown code block."
+                )
+                response = anthropic_client.messages.create(
+                    model="claude-sonnet-4-6",
+                    max_tokens=4000,
+                    temperature=0.3,
+                    messages=[{"role": "user", "content": claude_prompt}]
+                )
+                return parse_events(response.content[0].text)
+        except Exception as claude_err:
+            print(f"[Error] Claude fallback venue discovery (API) failed: {claude_err}")
+        return []
 
 
 @app.get("/")

@@ -6,6 +6,7 @@ import datetime
 import urllib.parse
 from google import genai
 from google.genai import types
+import anthropic
 
 # Initial core list of Twin Cities event sources
 DEFAULT_DIRECTORY = [
@@ -71,31 +72,55 @@ def load_directory(filename="venues.json"):
     return DEFAULT_DIRECTORY.copy()
 
 
-def get_gemini_client():
-    """Initializes the Gemini client using environment variables or a local .env file."""
-    api_key = os.environ.get("GEMINI_API_KEY")
-    
-    # Load from .env if environment variable is not set
-    if not api_key and os.path.exists(".env"):
+def load_env_keys():
+    """Loads API keys from .env if they are not already in environment variables."""
+    if os.path.exists(".env"):
         try:
             with open(".env", "r", encoding="utf-8") as f:
                 for line in f:
                     line = line.strip()
-                    if line.startswith("GEMINI_API_KEY"):
+                    if not line or line.startswith("#"):
+                        continue
+                    if "=" in line:
                         parts = line.split("=", 1)
                         if len(parts) == 2:
-                            api_key = parts[1].strip().strip('"').strip("'")
-                            os.environ["GEMINI_API_KEY"] = api_key
-                            break
+                            k = parts[0].strip()
+                            v = parts[1].strip().strip('"').strip("'")
+                            if k not in os.environ:
+                                os.environ[k] = v
         except Exception as e:
             print(f"[Warning] Failed to read .env file: {e}")
+    
+    # Standardize Anthropic key
+    if "CLAUDE_API_KEY" in os.environ and "ANTHROPIC_API_KEY" not in os.environ:
+        os.environ["ANTHROPIC_API_KEY"] = os.environ["CLAUDE_API_KEY"]
 
+
+def get_anthropic_client():
+    """Initializes the Anthropic client using environment variables or a local .env file."""
+    load_env_keys()
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
     if not api_key:
-        print("\n[Error] GEMINI_API_KEY environment variable not found.")
-        print("Please set it in your environment or a local .env file.")
-        sys.exit(1)
-        
-    return genai.Client()
+        return None
+    try:
+        return anthropic.Anthropic(api_key=api_key)
+    except Exception as e:
+        print(f"[Warning] Failed to initialize Anthropic client: {e}")
+        return None
+
+
+def get_gemini_client():
+    """Initializes the Gemini client using environment variables or a local .env file."""
+    load_env_keys()
+    api_key = os.environ.get("GEMINI_API_KEY")
+    if not api_key:
+        print("[Warning] GEMINI_API_KEY not found in environment or .env file.")
+        return None
+    try:
+        return genai.Client()
+    except Exception as e:
+        print(f"[Warning] Failed to initialize Gemini client: {e}")
+        return None
 
 
 def discover_venues_via_gemini(client, directory):
@@ -137,7 +162,10 @@ def discover_venues_via_gemini(client, directory):
         "Ensure the output is valid JSON. Do not include any introductory or concluding text. Wrap the JSON in a markdown code block."
     )
     
+    json_text = None
     try:
+        if not client:
+            raise ValueError("Gemini client is not initialized")
         response = client.models.generate_content(
             model="gemini-2.5-flash",
             contents=prompt,
@@ -147,7 +175,36 @@ def discover_venues_via_gemini(client, directory):
             ),
         )
         json_text = response.text
-        
+    except Exception as e:
+        print(f"[Warning] Gemini venue discovery failed: {e}. Falling back to Claude...")
+        try:
+            anthropic_client = get_anthropic_client()
+            if anthropic_client:
+                claude_prompt = (
+                    f"You are a local Twin Cities concierge analyzer. Since you do not have live web search access, please use your pre-trained knowledge to discover new venues.\n"
+                    f"{prompt_instructions}\n"
+                    f"The discovered venues must NOT be in this list of existing venues: {', '.join(existing_names)}.\n"
+                    "Return the discovered venues as a JSON list. Each venue object must have the following keys:\n"
+                    "- 'name': Name of the venue/restaurant\n"
+                    "- 'url': Official website URL\n"
+                    "- 'type': Category (assign to one of the category groupings above, or a similarly descriptive type)\n\n"
+                    "Ensure the output is valid JSON. Do not include any introductory or concluding text. Wrap the JSON in a markdown code block."
+                )
+                response = anthropic_client.messages.create(
+                    model="claude-sonnet-4-6",
+                    max_tokens=4000,
+                    temperature=0.3,
+                    messages=[{"role": "user", "content": claude_prompt}]
+                )
+                json_text = response.content[0].text
+        except Exception as claude_err:
+            print(f"[Error] Claude fallback venue discovery failed: {claude_err}")
+
+    if not json_text:
+        print("An error occurred during venue discovery: both Gemini and Claude failed.")
+        return
+
+    try:
         # Parse JSON
         match = re.search(r'```json\s*(.*?)\s*```', json_text, re.DOTALL)
         if match:
@@ -268,7 +325,7 @@ def manage_directory(client, directory):
 
 
 def resolve_date(client, date_query):
-    """Resolves the user's date query to YYYYMMDD format using Gemini."""
+    """Resolves the user's date query to YYYYMMDD format using Gemini, falling back to Claude if necessary."""
     today = datetime.date.today().strftime("%B %d, %Y")
     prompt = (
         f"Today is {today}. Parse the following date description: '{date_query}' and resolve it to a specific calendar date. "
@@ -276,6 +333,8 @@ def resolve_date(client, date_query):
         f"If you cannot determine the date, return the current date in YYYYMMDD format."
     )
     try:
+        if not client:
+            raise ValueError("Gemini client is not initialized")
         response = client.models.generate_content(
             model="gemini-2.5-flash",
             contents=prompt,
@@ -285,12 +344,28 @@ def resolve_date(client, date_query):
         if match:
             return match.group(0)
         return datetime.date.today().strftime("%Y%m%d")
-    except Exception:
+    except Exception as e:
+        print(f"[Warning] Gemini date resolution failed: {e}. Falling back to Claude...")
+        try:
+            anthropic_client = get_anthropic_client()
+            if anthropic_client:
+                response = anthropic_client.messages.create(
+                    model="claude-sonnet-4-6",
+                    max_tokens=20,
+                    temperature=0.0,
+                    messages=[{"role": "user", "content": prompt}]
+                )
+                resolved = response.content[0].text.strip()
+                match = re.search(r'\d{8}', resolved)
+                if match:
+                    return match.group(0)
+        except Exception as claude_err:
+            print(f"[Error] Claude fallback date resolution failed: {claude_err}")
         return datetime.date.today().strftime("%Y%m%d")
 
 
 def fetch_events_json(client, date_query, directory):
-    """Queries Gemini with Search grounding to return events in JSON format."""
+    """Queries Gemini with Search grounding to return events in JSON format, falling back to Claude if necessary."""
     sources_context = ", ".join([s["name"] for s in directory])
     
     prompt = (
@@ -305,33 +380,84 @@ def fetch_events_json(client, date_query, directory):
         f"Ensure the output is valid JSON. Do not include any introductory or concluding text. Wrap the JSON in a markdown code block if needed."
     )
     
-    response = client.models.generate_content(
-        model="gemini-2.5-flash",
-        contents=prompt,
-        config=types.GenerateContentConfig(
-            tools=[{"google_search": {}}],
-            temperature=0.2,
-        ),
-    )
-    return response.text
+    try:
+        if not client:
+            raise ValueError("Gemini client is not initialized")
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                tools=[{"google_search": {}}],
+                temperature=0.2,
+            ),
+        )
+        return response.text
+    except Exception as e:
+        print(f"[Warning] Gemini event retrieval failed: {e}. Falling back to Claude...")
+        try:
+            anthropic_client = get_anthropic_client()
+            if anthropic_client:
+                claude_prompt = (
+                    f"You are a local Twin Cities concierge analyzer. Since you do not have live web search access, please use your pre-trained knowledge to generate a list of typical resident events, weekly shows, or seasonal festivals/events happening on the date '{date_query}' at these venues: {sources_context}.\n"
+                    f"If a specific date is given, estimate what events would typically be scheduled on that day of the week or season at those venues.\n"
+                    f"Return the events as a JSON array (list). Each event object in the list MUST have the following keys:\n"
+                    f"- 'name': The name of the event\n"
+                    f"- 'venue': The venue or location\n"
+                    f"- 'time': The time of the event\n"
+                    f"- 'details': A brief details/description of the event\n"
+                    f"- 'link': A URL to buy tickets or get more info (an official website of the venue or event page).\n\n"
+                    f"Ensure the output is valid JSON. Do not include any introductory or concluding text. Wrap the JSON in a markdown code block if needed."
+                )
+                response = anthropic_client.messages.create(
+                    model="claude-sonnet-4-6",
+                    max_tokens=4000,
+                    temperature=0.2,
+                    messages=[{"role": "user", "content": claude_prompt}]
+                )
+                return response.content[0].text
+        except Exception as claude_err:
+            print(f"[Error] Claude fallback event retrieval failed: {claude_err}")
+        return "```json\n[]\n```"
 
 
 def parse_events(json_text):
-    """Extracts and parses JSON array from Gemini's response."""
+    """Extracts and parses JSON array from LLM responses, cleaning up formatting anomalies."""
+    if not json_text:
+        return []
+    
+    # Try parsing directly if it is clean JSON
+    try:
+        return json.loads(json_text.strip())
+    except json.JSONDecodeError:
+        pass
+
     match = re.search(r'```json\s*(.*?)\s*```', json_text, re.DOTALL)
     if match:
         content = match.group(1)
     else:
-        start = json_text.find('[')
-        end = json_text.rfind(']')
-        if start != -1 and end != -1:
-            content = json_text[start:end+1]
+        # Check if there is a general code block
+        match_block = re.search(r'```\s*(.*?)\s*```', json_text, re.DOTALL)
+        if match_block:
+            content = match_block.group(1)
         else:
-            content = json_text
+            start = json_text.find('[')
+            end = json_text.rfind(']')
+            if start != -1 and end != -1:
+                content = json_text[start:end+1]
+            else:
+                content = json_text
+    
+    content = content.strip()
     try:
         return json.loads(content)
     except json.JSONDecodeError:
-        return []
+        try:
+            # Remove trailing commas inside arrays or objects:
+            # e.g., ,} -> } or ,] -> ]
+            cleaned = re.sub(r',\s*([\]}])', r'\1', content)
+            return json.loads(cleaned)
+        except Exception:
+            return []
 
 
 def generate_html_file(events, nice_date, filename):
