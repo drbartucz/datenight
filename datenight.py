@@ -631,13 +631,13 @@ def generate_html_file(events, nice_date, filename):
 def search_events_by_date(client, directory):
     """Uses Google Search grounding through Gemini to find live events on a specific date, outputs event details, and writes an HTML file."""
     print("\n--- Look Up Events By Date ---")
+    today_str = datetime.date.today().strftime("%B %d, %Y")
     date_query = input(
-        "Enter a date (e.g., 'June 26, 2026', 'Tonight', 'This Saturday'): "
+        f"Enter a date (e.g., 'Tonight', 'This Saturday') [Default: {today_str}]: "
     ).strip()
 
     if not date_query:
-        print("Date cannot be empty.")
-        return
+        date_query = today_str
 
     print("Resolving date query...")
     ccyymmdd = resolve_date(client, date_query)
