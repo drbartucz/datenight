@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Twin Cities Date Night Portal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <h1>Twin Cities Date Night</h1>
+            <p>Discover live local concerts, theater plays, and dining experiences</p>
+        </header>
+
+        <!-- Navigation Tabs -->
+        <nav class="tabs" aria-label="Main Navigation">
+            <button class="tab-btn active" id="btn-search" onclick="switchTab('search')">Search Events</button>
+            <button class="tab-btn" id="btn-directory" onclick="switchTab('directory')">Manage Venues</button>
+        </nav>
+
+        <!-- Search View -->
+        <main class="view active" id="view-search">
+            <section class="search-card">
+                <form class="search-form" onsubmit="performSearch(event)">
+                    <div class="search-input-wrapper">
+                        <input type="text" class="search-input" id="search-date-query" placeholder="Enter a date (e.g., 'Tonight', 'This Saturday', 'July 4'). Leave empty for today.">
+                    </div>
+                    <button type="submit" class="search-btn">Search Events</button>
+                </form>
+            </section>
+
+            <!-- Loading Spinner -->
+            <div class="loader-container" id="search-loader">
+                <div class="spinner" aria-label="Loading events"></div>
+                <div class="loader-text">Querying Twin Cities live streams and search grounding via Gemini...</div>
+            </div>
+
+            <!-- Search Results -->
+            <section id="search-results-section" style="display: none;">
+                <div class="results-header">
+                    <h2 class="results-title" id="resolved-date-heading">Events</h2>
+                    <a href="#" target="_blank" class="view-report-btn" id="view-report-link" style="display: none;">
+                        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2.5" fill="none"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/></svg>
+                        Open Event Report
+                    </a>
+                </div>
+                <div class="events-grid" id="events-display"></div>
+            </section>
+        </main>
+
+        <!-- Directory View -->
+        <div class="view" id="view-directory">
+            <div class="directory-layout">
+                <!-- Venues list panel -->
+                <section class="venues-panel">
+                    <div class="panel-header">
+                        <h2>Event Venue Directory</h2>
+                        <p class="type-badge" id="venues-count">0 Venues loaded</p>
+                    </div>
+                    <div class="venues-list" id="venues-display">
+                        <!-- Discovered / loaded list items will be injected here -->
+                    </div>
+                </section>
+
+                <!-- Management Side panel -->
+                <div class="management-panel">
+                    <!-- Manual add venue -->
+                    <section class="management-card">
+                        <h3>Add Venue Manually</h3>
+                        <form onsubmit="addVenueManually(event)">
+                            <div class="form-group">
+                                <label for="manual-name">Venue Name</label>
+                                <input type="text" class="form-input" id="manual-name" required placeholder="e.g., Dakota Jazz Club">
+                            </div>
+                            <div class="form-group">
+                                <label for="manual-url">Website URL</label>
+                                <input type="text" class="form-input" id="manual-url" required placeholder="e.g., dakotacooks.com">
+                            </div>
+                            <div class="form-group">
+                                <label for="manual-type">Category</label>
+                                <input type="text" class="form-input" id="manual-type" required placeholder="e.g., Music Venue, Cultural Theatre">
+                            </div>
+                            <button type="submit" class="action-btn-primary">Save Venue</button>
+                        </form>
+                    </section>
+
+                    <!-- Discover venues via Gemini -->
+                    <section class="management-card">
+                        <h3>Discover Venues via Gemini</h3>
+                        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1rem; line-height: 1.4;">
+                            Ask Gemini to search the web for new arts, theatre, and dining venues in the Twin Cities.
+                        </p>
+                        <form onsubmit="discoverVenuesGemini(event)">
+                            <div class="form-group">
+                                <label for="discover-focus">Additional Search Details (Optional)</label>
+                                <input type="text" class="form-input" id="discover-focus" placeholder="e.g., 'Saint Paul theaters', 'Somali restaurants'">
+                            </div>
+                            <button type="submit" class="action-btn-purple" id="discover-btn">Discover Venues</button>
+                        </form>
+
+                        <!-- Discovering loader -->
+                        <div class="loader-container" id="discover-loader" style="padding: 2rem 0;">
+                            <div class="spinner"></div>
+                            <div class="loader-text" style="font-size: 0.9rem;">Searching the web via Gemini...</div>
+                        </div>
+
+                        <!-- Discovered Venues List -->
+                        <div class="discovered-results" id="discovered-results-display" style="display: none;"></div>
+                    </section>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Footer / Version Testing -->
+        <footer style="margin-top: 4rem; text-align: center; font-size: 0.85rem; color: var(--text-secondary); border-top: 1px solid rgba(255, 255, 255, 0.05); padding-top: 1.5rem; width: 100%;">
+            <p>Date Night! &bull; Copyright John Bartucz</p>
+            <p style="margin-top: 0.25rem; font-size: 0.75rem; opacity: 0.5;">Build: 2026-06-26 11:33 AM (CST)</p>
+        </footer>
+    </div>
+
+    <!-- Frontend logic -->
+    <script src="/static/app.js"></script>
+</body>
+</html>
