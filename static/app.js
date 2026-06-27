@@ -28,14 +28,11 @@ async function performSearch(event) {
     const queryInput = document.getElementById('search-date-query');
     const loader = document.getElementById('search-loader');
     const resultsSection = document.getElementById('search-results-section');
-    const eventsDisplay = document.getElementById('events-display');
-    const dateHeading = document.getElementById('resolved-date-heading');
-    const reportLink = document.getElementById('view-report-link');
+    const errorBanner = document.getElementById('search-error-banner');
+    const errorMessage = document.getElementById('search-error-message');
 
     loader.style.display = 'flex';
-    resultsSection.style.display = 'none';
-    eventsDisplay.innerHTML = '';
-    reportLink.style.display = 'none';
+    errorBanner.style.display = 'none';
 
     try {
         const response = await fetch('/api/events/search', {
@@ -45,60 +42,86 @@ async function performSearch(event) {
         });
 
         if (!response.ok) {
-            throw new Error(`Search failed: ${response.statusText}`);
+            const errData = await response.json().catch(() => ({}));
+            throw new Error(errData.detail || `Search failed: status ${response.status}`);
         }
 
         const data = await response.json();
         loader.style.display = 'none';
 
-        dateHeading.textContent = `Events for ${data.resolved_date}`;
-        reportLink.href = `/reports/${data.html_filename}`;
-        reportLink.style.display = 'inline-flex';
+        // Render and display
+        displaySearchResults(data);
 
-        if (data.events.length === 0) {
-            eventsDisplay.innerHTML = `
-                <div class="event-card" style="grid-column: 1 / -1; align-items: center; text-align: center; padding: 3rem 1rem;">
-                    <h3 class="event-name">No events found for this date.</h3>
-                    <p class="event-desc">Try searching for a different date or update your venue source list.</p>
-                </div>
-            `;
-        } else {
-            data.events.forEach(ev => {
-                const searchFallback = `https://www.google.com/search?q=${encodeURIComponent(ev.name + ' ' + ev.venue + ' Twin Cities')}`;
-                const finalLink = ev.link ? formatUrl(ev.link) : searchFallback;
-                
-                eventsDisplay.innerHTML += `
-                    <div class="event-card">
-                        <div>
-                            <span class="venue-tag">${ev.venue}</span>
-                            <h3 class="event-name">${ev.name}</h3>
-                            <div class="event-meta">
-                                <div>
-                                    <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
-                                    <span>${ev.venue}</span>
-                                </div>
-                                <div>
-                                    <svg viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>
-                                    <span>${ev.time || 'See details'}</span>
-                                </div>
-                            </div>
-                            <p class="event-desc">${ev.details || 'No additional details provided.'}</p>
-                        </div>
-                        <a href="${finalLink}" target="_blank" rel="noopener noreferrer" class="card-link">
-                            <span>More Info</span>
-                            <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-                        </a>
-                    </div>
-                `;
-            });
-        }
-
-        resultsSection.style.display = 'block';
+        // Save to localStorage
+        localStorage.setItem('lastSuccessfulSearch', JSON.stringify(data));
+        localStorage.setItem('lastSearchQuery', queryInput.value.trim());
 
     } catch (err) {
         loader.style.display = 'none';
-        alert(`An error occurred: ${err.message}`);
+        
+        // Show error message
+        errorMessage.textContent = err.message;
+        errorBanner.style.display = 'flex';
+
+        // Show results section if it has events (preserving last successful search view)
+        const eventsDisplay = document.getElementById('events-display');
+        if (eventsDisplay && eventsDisplay.children.length > 0) {
+            resultsSection.style.display = 'block';
+        }
     }
+}
+
+function displaySearchResults(data) {
+    const resultsSection = document.getElementById('search-results-section');
+    const eventsDisplay = document.getElementById('events-display');
+    const dateHeading = document.getElementById('resolved-date-heading');
+    const reportLink = document.getElementById('view-report-link');
+
+    eventsDisplay.innerHTML = '';
+    dateHeading.textContent = `Events for ${data.resolved_date}`;
+    reportLink.href = `/reports/${data.html_filename}`;
+    reportLink.style.display = 'inline-flex';
+
+    if (data.events.length === 0) {
+        eventsDisplay.innerHTML = `
+            <div class="event-card" style="grid-column: 1 / -1; align-items: center; text-align: center; padding: 3rem 1rem;">
+                <h3 class="event-name">No events found for this date.</h3>
+                <p class="event-desc">Try searching for a different date or update your venue source list.</p>
+            </div>
+        `;
+    } else {
+        data.events.forEach(ev => {
+            const searchFallback = `https://www.google.com/search?q=${encodeURIComponent(ev.name + ' ' + ev.venue + ' Twin Cities')}`;
+            const finalLink = ev.link ? formatUrl(ev.link) : searchFallback;
+            
+            eventsDisplay.innerHTML += `
+                <div class="event-card">
+                    <div>
+                        <span class="venue-tag">${ev.venue}</span>
+                        <h3 class="event-name">${ev.name}</h3>
+                        <div class="event-meta">
+                            <div>
+                                <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+                                <span>${ev.venue}</span>
+                            </div>
+                            <div>
+                                <svg viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>
+                                <span>${ev.time || 'See details'}</span>
+                            </div>
+                        </div>
+                        <p class="event-desc">${ev.details || 'No additional details provided.'}</p>
+                    </div>
+                    <a href="${finalLink}" target="_blank" rel="noopener noreferrer" class="card-link">
+                        <span>More Info</span>
+                        <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                    </a>
+                </div>
+            `;
+        });
+    }
+
+    resultsSection.style.display = 'block';
+}
 }
 
 // --- Venue Directory Management ---
@@ -293,3 +316,25 @@ async function saveDiscoveredVenue(index) {
         alert(`Error adding venue: ${err.message}`);
     }
 }
+
+// Load last successful search on page load
+document.addEventListener('DOMContentLoaded', () => {
+    try {
+        const lastSearch = localStorage.getItem('lastSuccessfulSearch');
+        const lastQuery = localStorage.getItem('lastSearchQuery');
+        
+        if (lastSearch) {
+            const data = JSON.parse(lastSearch);
+            displaySearchResults(data);
+        }
+        
+        if (lastQuery) {
+            const queryInput = document.getElementById('search-date-query');
+            if (queryInput) {
+                queryInput.value = lastQuery;
+            }
+        }
+    } catch (err) {
+        console.warn('Failed to load last successful search results:', err);
+    }
+});

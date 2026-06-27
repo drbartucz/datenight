@@ -34,6 +34,15 @@
                 </form>
             </section>
 
+            <!-- Error Banner -->
+            <div id="search-error-banner" style="display: none; margin-bottom: 2rem; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 16px; padding: 1.25rem 1.75rem; align-items: center; gap: 1rem; backdrop-filter: var(--glass-blur);">
+                <svg viewBox="0 0 24 24" width="28" height="28" stroke="#f87171" stroke-width="2" fill="none" style="flex-shrink: 0;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                <div style="flex-grow: 1;">
+                    <h4 style="margin: 0; color: #f87171; font-weight: 700; font-size: 1.1rem; text-transform: uppercase; letter-spacing: 0.02em;">Could not update results</h4>
+                    <p id="search-error-message" style="margin: 0.25rem 0 0 0; color: rgba(243, 244, 246, 0.8); font-size: 0.95rem; line-height: 1.5;"></p>
+                </div>
+            </div>
+
             <!-- Loading Spinner -->
             <div class="loader-container" id="search-loader">
                 <div class="spinner" aria-label="Loading events"></div>
