@@ -7,6 +7,7 @@ import urllib.parse
 from google import genai
 from google.genai import types
 import anthropic
+import openai
 
 # Initial core list of Twin Cities event sources
 DEFAULT_DIRECTORY = [
@@ -109,6 +110,19 @@ def get_anthropic_client():
         return None
 
 
+def get_openai_client():
+    """Initializes the OpenAI client using environment variables or a local .env file."""
+    load_env_keys()
+    api_key = os.environ.get("OPENAI_API_KEY")
+    if not api_key:
+        return None
+    try:
+        return openai.OpenAI(api_key=api_key)
+    except Exception as e:
+        print(f"[Warning] Failed to initialize OpenAI client: {e}")
+        return None
+
+
 def get_gemini_client():
     """Initializes the Gemini client using environment variables or a local .env file."""
     load_env_keys()
@@ -198,7 +212,36 @@ def discover_venues_via_gemini(client, directory):
                 )
                 json_text = response.content[0].text
         except Exception as claude_err:
-            print(f"[Error] Claude fallback venue discovery failed: {claude_err}")
+            print(f"[Warning] Claude fallback venue discovery failed: {claude_err}. Falling back to ChatGPT...")
+
+    if not json_text:
+        try:
+            openai_client = get_openai_client()
+            if openai_client:
+                openai_prompt = (
+                    f"You are a local Twin Cities concierge analyzer. Since you do not have live web search access, please use your pre-trained knowledge to discover new venues.\n"
+                    f"{prompt_instructions}\n"
+                    f"The discovered venues must NOT be in this list of existing venues: {', '.join(existing_names)}.\n"
+                    "Return the discovered venues as a JSON list. Each venue object must have the following keys:\n"
+                    "- 'name': Name of the venue/restaurant\n"
+                    "- 'url': Official website URL\n"
+                    "- 'type': Category (assign to one of the category groupings above, or a similarly descriptive type)\n\n"
+                    "Ensure the output is valid JSON. Do not include any introductory or concluding text. Wrap the JSON in a markdown code block."
+                )
+                for model_name in ["gpt-5.4-mini", "gpt-4o-mini"]:
+                    try:
+                        response = openai_client.chat.completions.create(
+                            model=model_name,
+                            messages=[{"role": "user", "content": openai_prompt}],
+                            max_tokens=4000,
+                            temperature=0.3
+                        )
+                        json_text = response.choices[0].message.content
+                        break
+                    except Exception as model_err:
+                        print(f"[Warning] OpenAI model {model_name} failed: {model_err}")
+        except Exception as openai_err:
+            print(f"[Error] ChatGPT fallback venue discovery failed: {openai_err}")
 
     if not json_text:
         print("An error occurred during venue discovery: both Gemini and Claude failed.")
@@ -325,13 +368,14 @@ def manage_directory(client, directory):
 
 
 def resolve_date(client, date_query):
-    """Resolves the user's date query to YYYYMMDD format using Gemini, falling back to Claude if necessary."""
+    """Resolves the user's date query to YYYYMMDD format using Gemini, falling back to Claude, then OpenAI if necessary."""
     today = datetime.date.today().strftime("%B %d, %Y")
     prompt = (
         f"Today is {today}. Parse the following date description: '{date_query}' and resolve it to a specific calendar date. "
         f"Return ONLY the date in YYYYMMDD format (8 digits, e.g., 20260626) with no other text, markdown, or characters. "
         f"If you cannot determine the date, return the current date in YYYYMMDD format."
     )
+    # 1. Gemini
     try:
         if not client:
             raise ValueError("Gemini client is not initialized")
@@ -346,26 +390,51 @@ def resolve_date(client, date_query):
         return datetime.date.today().strftime("%Y%m%d")
     except Exception as e:
         print(f"[Warning] Gemini date resolution failed: {e}. Falling back to Claude...")
-        try:
-            anthropic_client = get_anthropic_client()
-            if anthropic_client:
-                response = anthropic_client.messages.create(
-                    model="claude-sonnet-4-6",
-                    max_tokens=20,
-                    temperature=0.0,
-                    messages=[{"role": "user", "content": prompt}]
-                )
-                resolved = response.content[0].text.strip()
-                match = re.search(r'\d{8}', resolved)
-                if match:
-                    return match.group(0)
-        except Exception as claude_err:
-            print(f"[Error] Claude fallback date resolution failed: {claude_err}")
-        return datetime.date.today().strftime("%Y%m%d")
+        
+    # 2. Claude
+    try:
+        anthropic_client = get_anthropic_client()
+        if anthropic_client:
+            response = anthropic_client.messages.create(
+                model="claude-sonnet-4-6",
+                max_tokens=20,
+                temperature=0.0,
+                messages=[{"role": "user", "content": prompt}]
+            )
+            resolved = response.content[0].text.strip()
+            match = re.search(r'\d{8}', resolved)
+            if match:
+                return match.group(0)
+    except Exception as claude_err:
+        print(f"[Warning] Claude fallback date resolution failed: {claude_err}. Falling back to ChatGPT...")
+        
+    # 3. ChatGPT
+    try:
+        openai_client = get_openai_client()
+        if openai_client:
+            for model_name in ["gpt-5.4-mini", "gpt-4o-mini"]:
+                try:
+                    response = openai_client.chat.completions.create(
+                        model=model_name,
+                        messages=[{"role": "user", "content": prompt}],
+                        max_tokens=20,
+                        temperature=0.0
+                    )
+                    resolved = response.choices[0].message.content.strip()
+                    match = re.search(r'\d{8}', resolved)
+                    if match:
+                        return match.group(0)
+                    break
+                except Exception as model_err:
+                    print(f"[Warning] OpenAI model {model_name} failed: {model_err}")
+    except Exception as openai_err:
+        print(f"[Error] ChatGPT fallback date resolution failed: {openai_err}")
+        
+    return datetime.date.today().strftime("%Y%m%d")
 
 
 def fetch_events_json(client, date_query, directory):
-    """Queries Gemini with Search grounding to return events in JSON format, falling back to Claude if necessary."""
+    """Queries Gemini with Search grounding to return events in JSON format, falling back to Claude, then OpenAI if necessary."""
     sources_context = ", ".join([s["name"] for s in directory])
     
     prompt = (
@@ -380,6 +449,7 @@ def fetch_events_json(client, date_query, directory):
         f"Ensure the output is valid JSON. Do not include any introductory or concluding text. Wrap the JSON in a markdown code block if needed."
     )
     
+    # 1. Gemini
     try:
         if not client:
             raise ValueError("Gemini client is not initialized")
@@ -394,30 +464,51 @@ def fetch_events_json(client, date_query, directory):
         return response.text
     except Exception as e:
         print(f"[Warning] Gemini event retrieval failed: {e}. Falling back to Claude...")
-        try:
-            anthropic_client = get_anthropic_client()
-            if anthropic_client:
-                claude_prompt = (
-                    f"You are a local Twin Cities concierge analyzer. Since you do not have live web search access, please use your pre-trained knowledge to generate a list of typical resident events, weekly shows, or seasonal festivals/events happening on the date '{date_query}' at these venues: {sources_context}.\n"
-                    f"If a specific date is given, estimate what events would typically be scheduled on that day of the week or season at those venues.\n"
-                    f"Return the events as a JSON array (list). Each event object in the list MUST have the following keys:\n"
-                    f"- 'name': The name of the event\n"
-                    f"- 'venue': The venue or location\n"
-                    f"- 'time': The time of the event\n"
-                    f"- 'details': A brief details/description of the event\n"
-                    f"- 'link': A URL to buy tickets or get more info (an official website of the venue or event page).\n\n"
-                    f"Ensure the output is valid JSON. Do not include any introductory or concluding text. Wrap the JSON in a markdown code block if needed."
-                )
-                response = anthropic_client.messages.create(
-                    model="claude-sonnet-4-6",
-                    max_tokens=4000,
-                    temperature=0.2,
-                    messages=[{"role": "user", "content": claude_prompt}]
-                )
-                return response.content[0].text
-        except Exception as claude_err:
-            print(f"[Error] Claude fallback event retrieval failed: {claude_err}")
-        return "```json\n[]\n```"
+        
+    offline_prompt = (
+        f"You are a local Twin Cities concierge analyzer. Since you do not have live web search access, please use your pre-trained knowledge to generate a list of typical resident events, weekly shows, or seasonal festivals/events happening on the date '{date_query}' at these venues: {sources_context}.\n"
+        f"If a specific date is given, estimate what events would typically be scheduled on that day of the week or season at those venues.\n"
+        f"Return the events as a JSON array (list). Each event object in the list MUST have the following keys:\n"
+        f"- 'name': The name of the event\n"
+        f"- 'venue': The venue or location\n"
+        f"- 'time': The time of the event\n"
+        f"- 'details': A brief details/description of the event\n"
+        f"- 'link': A URL to buy tickets or get more info (an official website of the venue or event page).\n\n"
+        f"Ensure the output is valid JSON. Do not include any introductory or concluding text. Wrap the JSON in a markdown code block if needed."
+    )
+    
+    # 2. Claude
+    try:
+        anthropic_client = get_anthropic_client()
+        if anthropic_client:
+            response = anthropic_client.messages.create(
+                model="claude-sonnet-4-6",
+                max_tokens=4000,
+                temperature=0.2,
+                messages=[{"role": "user", "content": offline_prompt}]
+            )
+            return response.content[0].text
+    except Exception as claude_err:
+        print(f"[Warning] Claude fallback event retrieval failed: {claude_err}. Falling back to ChatGPT...")
+        
+    # 3. ChatGPT
+    try:
+        openai_client = get_openai_client()
+        if openai_client:
+            for model_name in ["gpt-5.4-mini", "gpt-4o-mini"]:
+                try:
+                    response = openai_client.chat.completions.create(
+                        model=model_name,
+                        messages=[{"role": "user", "content": offline_prompt}],
+                        max_tokens=4000,
+                        temperature=0.2
+                    )
+                    return response.choices[0].message.content
+                except Exception as model_err:
+                    print(f"[Warning] OpenAI model {model_name} failed: {model_err}")
+    except Exception as openai_err:
+        print(f"[Error] ChatGPT fallback event retrieval failed: {openai_err}")
+    return "```json\n[]\n```"
 
 
 def parse_events(json_text):
