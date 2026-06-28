@@ -1,0 +1,33 @@
+name: Daily Events Update
+
+on:
+  schedule:
+    # 6:00 AM Central = 11:00 UTC (CST) / 11:00 UTC (CDT would be 12:00 but GitHub uses UTC)
+    - cron: '0 11 * * *'
+  workflow_dispatch:
+
+jobs:
+  update-events:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger daily events update
+        env:
+          DEPLOY_URL: ${{ vars.RAILWAY_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$DEPLOY_URL" ]; then
+            echo "::error::RAILWAY_URL is not set"
+            exit 1
+          fi
+
+          echo "Triggering daily events update at $DEPLOY_URL..."
+          RESPONSE=$(curl -sf --max-time 120 \
+            -X POST \
+            -H "X-Cron-Secret: $CRON_SECRET" \
+            "$DEPLOY_URL/api/cron/update-today") || {
+            echo "::error::Failed to trigger update"
+            exit 1
+          }
+
+          echo "Response: $RESPONSE"
+          echo "Daily events update completed successfully."

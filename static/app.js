@@ -417,34 +417,33 @@ function savePassword(val) {
     checkPasswordValidity();
 }
 
-// Load last successful search on page load
+// Load pre-rendered today's events or fall back to last successful search
 document.addEventListener('DOMContentLoaded', () => {
     try {
-        const lastSearch = localStorage.getItem('lastSuccessfulSearch');
-        const lastQuery = localStorage.getItem('lastSearchQuery');
-        const savedPassword = localStorage.getItem('managePassword');
-        
-        if (lastSearch) {
-            const data = JSON.parse(lastSearch);
-            displaySearchResults(data);
-        }
-        
-        if (lastQuery) {
-            const queryInput = document.getElementById('search-date-query');
-            if (queryInput) {
-                queryInput.value = lastQuery;
+        const todayData = window.__TODAY_EVENTS__;
+        if (todayData && todayData.events && todayData.events.length > 0) {
+            displaySearchResults(todayData);
+        } else {
+            const lastSearch = localStorage.getItem('lastSuccessfulSearch');
+            if (lastSearch) {
+                displaySearchResults(JSON.parse(lastSearch));
             }
         }
 
+        const lastQuery = localStorage.getItem('lastSearchQuery');
+        if (lastQuery) {
+            const queryInput = document.getElementById('search-date-query');
+            if (queryInput) queryInput.value = lastQuery;
+        }
+
+        const savedPassword = localStorage.getItem('managePassword');
         if (savedPassword) {
             const pwdInput = document.getElementById('manage-password');
-            if (pwdInput) {
-                pwdInput.value = savedPassword;
-            }
+            if (pwdInput) pwdInput.value = savedPassword;
         }
-        
+
         checkPasswordValidity();
     } catch (err) {
-        console.warn('Failed to load last successful search results:', err);
+        console.warn('Failed to load events on startup:', err);
     }
 });

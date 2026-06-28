@@ -144,13 +144,60 @@ def discover_venues_api(client, directory, custom_details):
 
 @app.get("/")
 def get_index():
-    """Serves the front-end dashboard with the current server start timestamp."""
+    """Serves the front-end dashboard with pre-rendered today's events."""
     if os.path.exists("static/index.html"):
         with open("static/index.html") as f:
             html = f.read()
         html = html.replace("{{SERVER_START_TIME}}", SERVER_START_TIME)
+        today_data = "{}"
+        if os.path.exists(TODAY_EVENTS_FILE):
+            with open(TODAY_EVENTS_FILE, "r", encoding="utf-8") as f:
+                today_data = f.read()
+        html = html.replace("{{TODAY_EVENTS_JSON}}", today_data)
         return HTMLResponse(html)
     return {"message": "Twin Cities Date Night API Running. Front-end static/index.html missing."}
+
+
+TODAY_EVENTS_FILE = "today_events.json"
+
+
+@app.get("/api/today")
+def get_today_events():
+    """Returns pre-generated today's events from the cron job."""
+    if os.path.exists(TODAY_EVENTS_FILE):
+        with open(TODAY_EVENTS_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return {"resolved_date": None, "events": [], "ccyymmdd": None, "updated_at": None}
+
+
+@app.post("/api/cron/update-today")
+def cron_update_today(x_cron_secret: Optional[str] = Header(None, alias="X-Cron-Secret")):
+    """Fetches today's events and caches them. Protected by CRON_SECRET env var."""
+    expected = os.environ.get("CRON_SECRET", "")
+    if expected and x_cron_secret != expected:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    try:
+        client = get_gemini_client()
+        directory = load_directory()
+        today = datetime.date.today()
+        date_query = today.strftime("%B %d, %Y")
+        nice_date = today.strftime("%A, %B %d, %Y")
+        ccyymmdd = today.strftime("%Y%m%d")
+
+        json_text = fetch_events_json(client, date_query, directory)
+        events = parse_events(json_text)
+
+        result = {
+            "resolved_date": nice_date,
+            "ccyymmdd": ccyymmdd,
+            "events": events,
+            "updated_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        }
+        with open(TODAY_EVENTS_FILE, "w", encoding="utf-8") as f:
+            json.dump(result, f, indent=2)
+        return {"success": True, "event_count": len(events), "date": nice_date}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/api/venues")
