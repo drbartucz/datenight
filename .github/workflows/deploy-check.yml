@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Wait for Railway to deploy
-        run: sleep 180
+        run: sleep 300
 
       - name: Check deployment is live and has recent timestamp
         env:
