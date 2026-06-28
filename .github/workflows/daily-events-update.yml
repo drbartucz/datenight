@@ -21,13 +21,31 @@ jobs:
           fi
 
           echo "Triggering daily events update at $DEPLOY_URL..."
-          RESPONSE=$(curl -sf --max-time 120 \
+          TMP_RESP=$(mktemp)
+
+          HTTP_STATUS=$(curl -sS -w "%{http_code}" -o "$TMP_RESP" \
+            --max-time 120 \
+            --retry 3 --retry-delay 5 \
             -X POST \
             -H "X-Cron-Secret: $CRON_SECRET" \
-            "$DEPLOY_URL/api/cron/update-today") || {
-            echo "::error::Failed to trigger update"
-            exit 1
-          }
+            "$DEPLOY_URL/api/cron/update-today" || echo "000")
 
-          echo "Response: $RESPONSE"
-          echo "Daily events update completed successfully."
+          echo "HTTP status: $HTTP_STATUS"
+          echo "Response body:"
+          sed -n '1,200p' "$TMP_RESP" || true
+
+          if [ "$HTTP_STATUS" = "000" ]; then
+            echo "::error::Request failed (connection error or timeout)"
+            rm -f "$TMP_RESP"
+            exit 1
+          fi
+
+          if [ "$HTTP_STATUS" -ge 200 ] && [ "$HTTP_STATUS" -lt 300 ]; then
+            echo "Daily events update completed successfully."
+            rm -f "$TMP_RESP"
+            exit 0
+          else
+            echo "::error::Failed to trigger update (status $HTTP_STATUS)"
+            rm -f "$TMP_RESP"
+            exit 1
+          fi
