@@ -67,7 +67,7 @@ def load_directory(filename="venues.json"):
                 return json.load(f)
         except Exception as e:
             print(f"Error loading venue directory: {e}. Falling back to default list.")
-    
+
     # If the file doesn't exist or failed to load, populate it with the defaults
     save_directory(DEFAULT_DIRECTORY, filename)
     return DEFAULT_DIRECTORY.copy()
@@ -91,7 +91,7 @@ def load_env_keys():
                                 os.environ[k] = v
         except Exception as e:
             print(f"[Warning] Failed to read .env file: {e}")
-    
+
     # Standardize Anthropic key
     if "CLAUDE_API_KEY" in os.environ and "ANTHROPIC_API_KEY" not in os.environ:
         os.environ["ANTHROPIC_API_KEY"] = os.environ["CLAUDE_API_KEY"]
@@ -145,10 +145,12 @@ def discover_venues_via_gemini(client, directory):
         "or press Enter to perform a general search: "
     ).strip()
 
-    print("\nQuerying Gemini for new Twin Cities cultural venues, theatres, and restaurants...")
-    
+    print(
+        "\nQuerying Gemini for new Twin Cities cultural venues, theatres, and restaurants..."
+    )
+
     existing_names = [s["name"] for s in directory]
-    
+
     if not custom_details:
         prompt_instructions = (
             "Discover new venues in the Twin Cities (Minneapolis and Saint Paul, MN) across these categories:\n"
@@ -165,7 +167,7 @@ def discover_venues_via_gemini(client, directory):
             "For dining and restaurants, ONLY list venues that host live events, performances, or have something really unique and special going on (such as indigenous dining experiences, regular live music, cultural performances, or pop-up chef/event series)—do NOT list standard dining-only restaurants.\n"
             f"Additional search focus/requirements: '{custom_details}'.\n"
         )
-    
+
     prompt = (
         f"{prompt_instructions}\n"
         f"The discovered venues must NOT be in this list of existing venues: {', '.join(existing_names)}.\n"
@@ -175,7 +177,7 @@ def discover_venues_via_gemini(client, directory):
         "- 'type': Category (assign to one of the category groupings above, or a similarly descriptive type)\n\n"
         "Ensure the output is valid JSON. Do not include any introductory or concluding text. Wrap the JSON in a markdown code block."
     )
-    
+
     json_text = None
     try:
         if not client:
@@ -190,7 +192,9 @@ def discover_venues_via_gemini(client, directory):
         )
         json_text = response.text
     except Exception as e:
-        print(f"[Warning] Gemini venue discovery failed: {e}. Falling back to Claude...")
+        print(
+            f"[Warning] Gemini venue discovery failed: {e}. Falling back to Claude..."
+        )
         try:
             anthropic_client = get_anthropic_client()
             if anthropic_client:
@@ -208,11 +212,13 @@ def discover_venues_via_gemini(client, directory):
                     model="claude-sonnet-4-6",
                     max_tokens=4000,
                     temperature=0.3,
-                    messages=[{"role": "user", "content": claude_prompt}]
+                    messages=[{"role": "user", "content": claude_prompt}],
                 )
                 json_text = response.content[0].text
         except Exception as claude_err:
-            print(f"[Warning] Claude fallback venue discovery failed: {claude_err}. Falling back to ChatGPT...")
+            print(
+                f"[Warning] Claude fallback venue discovery failed: {claude_err}. Falling back to ChatGPT..."
+            )
 
     if not json_text:
         try:
@@ -234,34 +240,38 @@ def discover_venues_via_gemini(client, directory):
                             model=model_name,
                             messages=[{"role": "user", "content": openai_prompt}],
                             max_tokens=4000,
-                            temperature=0.3
+                            temperature=0.3,
                         )
                         json_text = response.choices[0].message.content
                         break
                     except Exception as model_err:
-                        print(f"[Warning] OpenAI model {model_name} failed: {model_err}")
+                        print(
+                            f"[Warning] OpenAI model {model_name} failed: {model_err}"
+                        )
         except Exception as openai_err:
             print(f"[Error] ChatGPT fallback venue discovery failed: {openai_err}")
 
     if not json_text:
-        print("An error occurred during venue discovery: both Gemini and Claude failed.")
+        print(
+            "An error occurred during venue discovery: both Gemini and Claude failed."
+        )
         return
 
     try:
         # Parse JSON
-        match = re.search(r'```json\s*(.*?)\s*```', json_text, re.DOTALL)
+        match = re.search(r"```json\s*(.*?)\s*```", json_text, re.DOTALL)
         if match:
             content = match.group(1)
         else:
-            start = json_text.find('[')
-            end = json_text.rfind(']')
+            start = json_text.find("[")
+            end = json_text.rfind("]")
             if start != -1 and end != -1:
-                content = json_text[start:end+1]
+                content = json_text[start : end + 1]
             else:
                 content = json_text
-                
+
         venues = json.loads(content)
-        
+
         if not venues or not isinstance(venues, list):
             print("No new venues found or failed to parse the response.")
             return
@@ -269,20 +279,20 @@ def discover_venues_via_gemini(client, directory):
         print("\n--- Discovered Venues ---")
         for idx, v in enumerate(venues, start=1):
             print(f"{idx}. {v['name']} ({v['url']}) [{v['type']}]")
-            
+
         print("\nOptions:")
         print("Enter numbers separated by commas to add (e.g., '1,3,5')")
         print("[A] Add all discovered venues")
         print("[C] Cancel and return")
-        
+
         choice = input("Select an option: ").strip().lower()
-        if choice == 'c':
+        if choice == "c":
             print("Cancelled.")
             return
-        elif choice == 'a':
+        elif choice == "a":
             added_count = 0
             for v in venues:
-                if v['name'] not in [ex['name'] for ex in directory]:
+                if v["name"] not in [ex["name"] for ex in directory]:
                     directory.append(v)
                     added_count += 1
             if added_count > 0:
@@ -290,12 +300,14 @@ def discover_venues_via_gemini(client, directory):
             print(f"Successfully added {added_count} venues!")
         else:
             try:
-                indices = [int(i.strip()) - 1 for i in choice.split(",") if i.strip().isdigit()]
+                indices = [
+                    int(i.strip()) - 1 for i in choice.split(",") if i.strip().isdigit()
+                ]
                 added_count = 0
                 for idx in indices:
                     if 0 <= idx < len(venues):
                         v = venues[idx]
-                        if v['name'] not in [ex['name'] for ex in directory]:
+                        if v["name"] not in [ex["name"] for ex in directory]:
                             directory.append(v)
                             added_count += 1
                 if added_count > 0:
@@ -303,7 +315,7 @@ def discover_venues_via_gemini(client, directory):
                 print(f"Successfully added {added_count} venues!")
             except Exception:
                 print("Invalid input format.")
-                
+
     except Exception as e:
         print(f"An error occurred during venue discovery: {e}")
 
@@ -384,13 +396,15 @@ def resolve_date(client, date_query):
             contents=prompt,
         )
         resolved = response.text.strip()
-        match = re.search(r'\d{8}', resolved)
+        match = re.search(r"\d{8}", resolved)
         if match:
             return match.group(0)
         return datetime.date.today().strftime("%Y%m%d")
     except Exception as e:
-        print(f"[Warning] Gemini date resolution failed: {e}. Falling back to Claude...")
-        
+        print(
+            f"[Warning] Gemini date resolution failed: {e}. Falling back to Claude..."
+        )
+
     # 2. Claude
     try:
         anthropic_client = get_anthropic_client()
@@ -399,15 +413,17 @@ def resolve_date(client, date_query):
                 model="claude-sonnet-4-6",
                 max_tokens=20,
                 temperature=0.0,
-                messages=[{"role": "user", "content": prompt}]
+                messages=[{"role": "user", "content": prompt}],
             )
             resolved = response.content[0].text.strip()
-            match = re.search(r'\d{8}', resolved)
+            match = re.search(r"\d{8}", resolved)
             if match:
                 return match.group(0)
     except Exception as claude_err:
-        print(f"[Warning] Claude fallback date resolution failed: {claude_err}. Falling back to ChatGPT...")
-        
+        print(
+            f"[Warning] Claude fallback date resolution failed: {claude_err}. Falling back to ChatGPT..."
+        )
+
     # 3. ChatGPT
     try:
         openai_client = get_openai_client()
@@ -418,10 +434,10 @@ def resolve_date(client, date_query):
                         model=model_name,
                         messages=[{"role": "user", "content": prompt}],
                         max_tokens=20,
-                        temperature=0.0
+                        temperature=0.0,
                     )
                     resolved = response.choices[0].message.content.strip()
-                    match = re.search(r'\d{8}', resolved)
+                    match = re.search(r"\d{8}", resolved)
                     if match:
                         return match.group(0)
                     break
@@ -429,14 +445,14 @@ def resolve_date(client, date_query):
                     print(f"[Warning] OpenAI model {model_name} failed: {model_err}")
     except Exception as openai_err:
         print(f"[Error] ChatGPT fallback date resolution failed: {openai_err}")
-        
+
     return datetime.date.today().strftime("%Y%m%d")
 
 
 def fetch_events_json(client, date_query, directory):
     """Queries Gemini with Search grounding to return events in JSON format, falling back to Claude, then OpenAI if necessary."""
     sources_context = ", ".join([s["name"] for s in directory])
-    
+
     prompt = (
         f"You are a local Twin Cities concierge analyzer. Find and list public events happening on the date: '{date_query}'.\n"
         f"Prioritize monitoring key venues and frameworks mentioned here: {sources_context}.\n"
@@ -448,7 +464,7 @@ def fetch_events_json(client, date_query, directory):
         f"- 'link': A URL to buy tickets or get more info. If you find a website link for the event or venue in your search grounding/results, use it. Otherwise, use an official website of the venue.\n\n"
         f"Ensure the output is valid JSON. Do not include any introductory or concluding text. Wrap the JSON in a markdown code block if needed."
     )
-    
+
     # 1. Gemini
     try:
         if not client:
@@ -463,8 +479,10 @@ def fetch_events_json(client, date_query, directory):
         )
         return response.text
     except Exception as e:
-        print(f"[Warning] Gemini event retrieval failed: {e}. Falling back to Claude...")
-        
+        print(
+            f"[Warning] Gemini event retrieval failed: {e}. Falling back to Claude..."
+        )
+
     offline_prompt = (
         f"You are a local Twin Cities concierge analyzer. Since you do not have live web search access, please use your pre-trained knowledge to generate a list of typical resident events, weekly shows, or seasonal festivals/events happening on the date '{date_query}' at these venues: {sources_context}.\n"
         f"If a specific date is given, estimate what events would typically be scheduled on that day of the week or season at those venues.\n"
@@ -476,7 +494,7 @@ def fetch_events_json(client, date_query, directory):
         f"- 'link': A URL to buy tickets or get more info (an official website of the venue or event page).\n\n"
         f"Ensure the output is valid JSON. Do not include any introductory or concluding text. Wrap the JSON in a markdown code block if needed."
     )
-    
+
     # 2. Claude
     try:
         anthropic_client = get_anthropic_client()
@@ -485,12 +503,14 @@ def fetch_events_json(client, date_query, directory):
                 model="claude-sonnet-4-6",
                 max_tokens=4000,
                 temperature=0.2,
-                messages=[{"role": "user", "content": offline_prompt}]
+                messages=[{"role": "user", "content": offline_prompt}],
             )
             return response.content[0].text
     except Exception as claude_err:
-        print(f"[Warning] Claude fallback event retrieval failed: {claude_err}. Falling back to ChatGPT...")
-        
+        print(
+            f"[Warning] Claude fallback event retrieval failed: {claude_err}. Falling back to ChatGPT..."
+        )
+
     # 3. ChatGPT
     try:
         openai_client = get_openai_client()
@@ -501,7 +521,7 @@ def fetch_events_json(client, date_query, directory):
                         model=model_name,
                         messages=[{"role": "user", "content": offline_prompt}],
                         max_tokens=4000,
-                        temperature=0.2
+                        temperature=0.2,
                     )
                     return response.choices[0].message.content
                 except Exception as model_err:
@@ -515,29 +535,29 @@ def parse_events(json_text):
     """Extracts and parses JSON array from LLM responses, cleaning up formatting anomalies."""
     if not json_text:
         return []
-    
+
     # Try parsing directly if it is clean JSON
     try:
         return json.loads(json_text.strip())
     except json.JSONDecodeError:
         pass
 
-    match = re.search(r'```json\s*(.*?)\s*```', json_text, re.DOTALL)
+    match = re.search(r"```json\s*(.*?)\s*```", json_text, re.DOTALL)
     if match:
         content = match.group(1)
     else:
         # Check if there is a general code block
-        match_block = re.search(r'```\s*(.*?)\s*```', json_text, re.DOTALL)
+        match_block = re.search(r"```\s*(.*?)\s*```", json_text, re.DOTALL)
         if match_block:
             content = match_block.group(1)
         else:
-            start = json_text.find('[')
-            end = json_text.rfind(']')
+            start = json_text.find("[")
+            end = json_text.rfind("]")
             if start != -1 and end != -1:
-                content = json_text[start:end+1]
+                content = json_text[start : end + 1]
             else:
                 content = json_text
-    
+
     content = content.strip()
     try:
         return json.loads(content)
@@ -545,7 +565,7 @@ def parse_events(json_text):
         try:
             # Remove trailing commas inside arrays or objects:
             # e.g., ,} -> } or ,] -> ]
-            cleaned = re.sub(r',\s*([\]}])', r'\1', content)
+            cleaned = re.sub(r",\s*([\]}])", r"\1", content)
             return json.loads(cleaned)
         except Exception:
             return []
@@ -563,16 +583,16 @@ def generate_html_file(events, nice_date, filename):
         """
     else:
         for event in events:
-            name = event.get('name', 'Unnamed Event')
-            venue = event.get('venue', 'Unknown Venue')
-            time = event.get('time', 'See website')
-            details = event.get('details', 'No details provided.')
-            link = event.get('link', '')
-            
+            name = event.get("name", "Unnamed Event")
+            venue = event.get("venue", "Unknown Venue")
+            time = event.get("time", "See website")
+            details = event.get("details", "No details provided.")
+            link = event.get("link", "")
+
             if not link:
                 search_q = urllib.parse.quote(f"{name} {venue} Twin Cities")
                 link = f"https://www.google.com/search?q={search_q}"
-            
+
             events_html += f"""
             <div class="event-card">
                 <div class="event-info-top">
@@ -596,13 +616,13 @@ def generate_html_file(events, nice_date, filename):
                 </a>
             </div>
             """
-            
+
     html_content = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Twin Cities Date Night - {nice_date}</title>
+    <title>Date Night - {nice_date}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -893,11 +913,11 @@ def search_events_by_date(client, directory):
             print("No events found or failed to parse events from response.")
         else:
             for idx, event in enumerate(events, start=1):
-                name = event.get('name', 'Unnamed Event')
-                venue = event.get('venue', 'Unknown Venue')
-                time = event.get('time', 'See website')
-                details = event.get('details', '')
-                link = event.get('link', '')
+                name = event.get("name", "Unnamed Event")
+                venue = event.get("venue", "Unknown Venue")
+                time = event.get("time", "See website")
+                details = event.get("details", "")
+                link = event.get("link", "")
                 print(f"{idx}. {name}")
                 print(f"   Venue: {venue}")
                 print(f"   Time:  {time}")
