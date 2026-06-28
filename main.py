@@ -3,7 +3,8 @@ import sys
 import json
 import re
 import datetime
-from fastapi import FastAPI, HTTPException
+from typing import Optional
+from fastapi import FastAPI, HTTPException, Header
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -159,8 +160,12 @@ def get_venues():
 
 
 @app.post("/api/venues")
-def add_venue(venue: Venue):
+def add_venue(venue: Venue, x_manage_password: Optional[str] = Header(None, alias="X-Manage-Password")):
     """Adds a new venue to the directory."""
+    expected = os.environ.get("MANAGE_VENUES_PASSWORD", "")
+    if expected and x_manage_password != expected:
+        raise HTTPException(status_code=401, detail="Unauthorized: Invalid manage password.")
+        
     directory = load_directory()
     if any(v["name"].lower() == venue.name.lower() for v in directory):
         raise HTTPException(status_code=400, detail="Venue already exists.")
@@ -171,8 +176,12 @@ def add_venue(venue: Venue):
 
 
 @app.delete("/api/venues")
-def delete_venue(name: str):
+def delete_venue(name: str, x_manage_password: Optional[str] = Header(None, alias="X-Manage-Password")):
     """Deletes a venue from the directory."""
+    expected = os.environ.get("MANAGE_VENUES_PASSWORD", "")
+    if expected and x_manage_password != expected:
+        raise HTTPException(status_code=401, detail="Unauthorized: Invalid manage password.")
+        
     directory = load_directory()
     filtered = [v for v in directory if v["name"].lower() != name.lower()]
     if len(filtered) == len(directory):
@@ -182,8 +191,12 @@ def delete_venue(name: str):
 
 
 @app.post("/api/venues/discover")
-def discover_venues(req: DiscoverRequest):
+def discover_venues(req: DiscoverRequest, x_manage_password: Optional[str] = Header(None, alias="X-Manage-Password")):
     """Calls Gemini to find new venues based on custom search terms."""
+    expected = os.environ.get("MANAGE_VENUES_PASSWORD", "")
+    if expected and x_manage_password != expected:
+        raise HTTPException(status_code=401, detail="Unauthorized: Invalid manage password.")
+        
     try:
         client = get_gemini_client()
         directory = load_directory()

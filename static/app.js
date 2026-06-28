@@ -181,7 +181,10 @@ async function addVenueManually(event) {
     try {
         const response = await fetch('/api/venues', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+                'Content-Type': 'application/json',
+                'X-Manage-Password': localStorage.getItem('managePassword') || ''
+            },
             body: JSON.stringify({
                 name: nameInput.value.trim(),
                 url: urlInput.value.trim(),
@@ -190,7 +193,7 @@ async function addVenueManually(event) {
         });
 
         if (!response.ok) {
-            const errData = await response.json();
+            const errData = await response.json().catch(() => ({}));
             throw new Error(errData.detail || 'Failed to add venue');
         }
 
@@ -211,11 +214,15 @@ async function deleteVenue(name) {
 
     try {
         const response = await fetch(`/api/venues?name=${encodeURIComponent(name)}`, {
-            method: 'DELETE'
+            method: 'DELETE',
+            headers: {
+                'X-Manage-Password': localStorage.getItem('managePassword') || ''
+            }
         });
 
         if (!response.ok) {
-            throw new Error('Failed to delete venue');
+            const errData = await response.json().catch(() => ({}));
+            throw new Error(errData.detail || 'Failed to delete venue');
         }
 
         loadVenues();
@@ -243,12 +250,16 @@ async function discoverVenuesGemini(event) {
     try {
         const response = await fetch('/api/venues/discover', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+                'Content-Type': 'application/json',
+                'X-Manage-Password': localStorage.getItem('managePassword') || ''
+            },
             body: JSON.stringify({ custom_details: focusInput.value.trim() })
         });
 
         if (!response.ok) {
-            throw new Error('Failed to discover venues');
+            const errData = await response.json().catch(() => ({}));
+            throw new Error(errData.detail || 'Failed to discover venues');
         }
 
         discoveredVenuesList = await response.json();
@@ -300,7 +311,10 @@ async function saveDiscoveredVenue(index) {
     try {
         const response = await fetch('/api/venues', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+                'Content-Type': 'application/json',
+                'X-Manage-Password': localStorage.getItem('managePassword') || ''
+            },
             body: JSON.stringify({
                 name: venue.name,
                 url: venue.url,
@@ -309,7 +323,7 @@ async function saveDiscoveredVenue(index) {
         });
 
         if (!response.ok) {
-            const errData = await response.json();
+            const errData = await response.json().catch(() => ({}));
             throw new Error(errData.detail || 'Failed to save discovered venue');
         }
 
@@ -326,11 +340,16 @@ async function saveDiscoveredVenue(index) {
     }
 }
 
+function savePassword(val) {
+    localStorage.setItem('managePassword', val);
+}
+
 // Load last successful search on page load
 document.addEventListener('DOMContentLoaded', () => {
     try {
         const lastSearch = localStorage.getItem('lastSuccessfulSearch');
         const lastQuery = localStorage.getItem('lastSearchQuery');
+        const savedPassword = localStorage.getItem('managePassword');
         
         if (lastSearch) {
             const data = JSON.parse(lastSearch);
@@ -341,6 +360,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const queryInput = document.getElementById('search-date-query');
             if (queryInput) {
                 queryInput.value = lastQuery;
+            }
+        }
+
+        if (savedPassword) {
+            const pwdInput = document.getElementById('manage-password');
+            if (pwdInput) {
+                pwdInput.value = savedPassword;
             }
         }
     } catch (err) {

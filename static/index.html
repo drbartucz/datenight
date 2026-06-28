@@ -77,6 +77,17 @@
 
                 <!-- Management Side panel -->
                 <div class="management-panel">
+                    <!-- Access Password -->
+                    <section class="management-card" style="border: 1px solid rgba(0, 240, 255, 0.2); box-shadow: 0 0 15px rgba(0, 240, 255, 0.05);">
+                        <h3 style="color: var(--neon-blue); margin-bottom: 0.5rem;">Access Password</h3>
+                        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1rem; line-height: 1.4;">
+                            Required to add, delete, or discover venues.
+                        </p>
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <input type="password" class="form-input" id="manage-password" placeholder="Enter password" oninput="savePassword(this.value)">
+                        </div>
+                    </section>
+
                     <!-- Manual add venue -->
                     <section class="management-card">
                         <h3>Add Venue Manually</h3>
