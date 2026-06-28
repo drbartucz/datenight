@@ -206,6 +206,16 @@ def discover_venues(req: DiscoverRequest, x_manage_password: Optional[str] = Hea
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/api/venues/verify-password")
+def verify_password(x_manage_password: Optional[str] = Header(None, alias="X-Manage-Password")):
+    """Verifies if the given manage password matches the environment variable."""
+    expected = os.environ.get("MANAGE_VENUES_PASSWORD", "")
+    if expected and x_manage_password != expected:
+        raise HTTPException(status_code=401, detail="Unauthorized: Invalid manage password.")
+    return {"valid": True}
+
+
+
 @app.post("/api/events/search")
 def search_events(req: SearchRequest):
     """Searches Twin Cities events on the given date and saves them in HTML format."""
