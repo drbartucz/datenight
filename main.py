@@ -3,6 +3,8 @@ import sys
 import json
 import re
 import datetime
+import threading
+import zoneinfo
 from typing import Optional
 from fastapi import FastAPI, HTTPException, Header
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
@@ -30,8 +32,46 @@ app = FastAPI(title="Twin Cities Date Night API")
 # Ensure static directory exists
 os.makedirs("static", exist_ok=True)
 
-# Record server start time for deployment verification
-SERVER_START_TIME = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+CENTRAL_TZ = zoneinfo.ZoneInfo("America/Chicago")
+TODAY_EVENTS_FILE = "today_events.json"
+
+def now_central():
+    return datetime.datetime.now(CENTRAL_TZ)
+
+SERVER_START_TIME = now_central().strftime("%Y-%m-%d %I:%M %p CT")
+
+def _fetch_today_events():
+    try:
+        from datenight import load_env_keys
+        load_env_keys()
+        client = get_gemini_client()
+        directory = load_directory()
+        today = now_central().date()
+        date_query = today.strftime("%B %d, %Y")
+        nice_date = today.strftime("%A, %B %d, %Y")
+        ccyymmdd = today.strftime("%Y%m%d")
+
+        print(f"[Startup] Fetching events for {nice_date}...")
+        json_text = fetch_events_json(client, date_query, directory)
+        events = parse_events(json_text)
+
+        result = {
+            "resolved_date": nice_date,
+            "ccyymmdd": ccyymmdd,
+            "events": events,
+            "updated_at": now_central().strftime("%Y-%m-%d %I:%M %p CT"),
+        }
+        with open(TODAY_EVENTS_FILE, "w", encoding="utf-8") as f:
+            json.dump(result, f, indent=2)
+        print(f"[Startup] Saved {len(events)} events to {TODAY_EVENTS_FILE}")
+    except Exception as e:
+        print(f"[Startup] Failed to fetch today's events: {e}")
+
+
+@app.on_event("startup")
+def startup_fetch_events():
+    threading.Thread(target=_fetch_today_events, daemon=True).start()
+
 
 class Venue(BaseModel):
     name: str
@@ -158,9 +198,6 @@ def get_index():
     return {"message": "Twin Cities Date Night API Running. Front-end static/index.html missing."}
 
 
-TODAY_EVENTS_FILE = "today_events.json"
-
-
 @app.get("/api/today")
 def get_today_events():
     """Returns pre-generated today's events from the cron job."""
@@ -179,7 +216,7 @@ def cron_update_today(x_cron_secret: Optional[str] = Header(None, alias="X-Cron-
     try:
         client = get_gemini_client()
         directory = load_directory()
-        today = datetime.date.today()
+        today = now_central().date()
         date_query = today.strftime("%B %d, %Y")
         nice_date = today.strftime("%A, %B %d, %Y")
         ccyymmdd = today.strftime("%Y%m%d")
@@ -191,7 +228,7 @@ def cron_update_today(x_cron_secret: Optional[str] = Header(None, alias="X-Cron-
             "resolved_date": nice_date,
             "ccyymmdd": ccyymmdd,
             "events": events,
-            "updated_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "updated_at": now_central().strftime("%Y-%m-%d %I:%M %p CT"),
         }
         with open(TODAY_EVENTS_FILE, "w", encoding="utf-8") as f:
             json.dump(result, f, indent=2)
