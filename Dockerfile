@@ -17,4 +17,4 @@ COPY . .
 # Expose port and run server
 ENV PORT=8000
 ENV PYTHONUNBUFFERED=1
-CMD ["sh", "-c", "python -c 'import main; print(\"Import OK\")' && uvicorn main:app --host 0.0.0.0 --port $PORT"]
+CMD ["sh", "-c", "echo 'Container starting...' && python -c 'print(\"Python OK\"); import main; print(\"Import OK\")' && echo 'Starting uvicorn...' && uvicorn main:app --host 0.0.0.0 --port $PORT --log-level info"]
