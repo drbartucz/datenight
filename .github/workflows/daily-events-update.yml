@@ -1,0 +1,51 @@
+name: Daily Events Update
+
+on:
+  schedule:
+    # 6:00 AM Central = 11:00 UTC
+    - cron: '0 11 * * *'
+  workflow_dispatch:
+
+jobs:
+  update-events:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger daily events update
+        env:
+          DEPLOY_URL: ${{ vars.RAILWAY_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$DEPLOY_URL" ]; then
+            echo "::error::RAILWAY_URL is not set"
+            exit 1
+          fi
+
+          echo "Triggering daily events update at $DEPLOY_URL..."
+          TMP_RESP=$(mktemp)
+
+          HTTP_STATUS=$(curl -sS -w "%{http_code}" -o "$TMP_RESP" \
+            --max-time 120 \
+            --retry 3 --retry-delay 5 \
+            -X POST \
+            -H "X-Cron-Secret: $CRON_SECRET" \
+            "$DEPLOY_URL/api/cron/update-today" || echo "000")
+
+          echo "HTTP status: $HTTP_STATUS"
+          echo "Response body:"
+          sed -n '1,200p' "$TMP_RESP" || true
+
+          if [ "$HTTP_STATUS" = "000" ]; then
+            echo "::error::Request failed (connection error or timeout)"
+            rm -f "$TMP_RESP"
+            exit 1
+          fi
+
+          if [ "$HTTP_STATUS" -ge 200 ] && [ "$HTTP_STATUS" -lt 300 ]; then
+            echo "Daily events update completed successfully."
+            rm -f "$TMP_RESP"
+            exit 0
+          else
+            echo "::error::Failed to trigger update (status $HTTP_STATUS)"
+            rm -f "$TMP_RESP"
+            exit 1
+          fi

@@ -9,7 +9,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Install python dependencies
 COPY requirements.txt requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt && pip list
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy source code
 COPY . .
@@ -18,4 +18,4 @@ COPY . .
 ENV PORT=8080
 EXPOSE 8080
 ENV PYTHONUNBUFFERED=1
-CMD ["sh", "-c", "echo 'Container starting...' && python -c 'print(\"Python OK\"); import main; print(\"Import OK\")' && echo 'Starting uvicorn...' && uvicorn main:app --host 0.0.0.0 --port $PORT --log-level info"]
+CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port $PORT"]
