@@ -151,14 +151,42 @@ async function loadVenues() {
             return;
         }
 
+        // Sort by category (type) first, then alphabetically by name
+        directory.sort((a, b) => {
+            const typeA = (a.type || 'Uncategorized').toLowerCase();
+            const typeB = (b.type || 'Uncategorized').toLowerCase();
+            if (typeA < typeB) return -1;
+            if (typeA > typeB) return 1;
+            
+            const nameA = (a.name || '').toLowerCase();
+            const nameB = (b.name || '').toLowerCase();
+            if (nameA < nameB) return -1;
+            if (nameA > nameB) return 1;
+            return 0;
+        });
+
+        let currentCategory = '';
         directory.forEach(v => {
             const formattedUrl = formatUrl(v.url);
+            const category = v.type || 'Uncategorized';
+            
+            if (category !== currentCategory) {
+                currentCategory = category;
+                venuesDisplay.innerHTML += `
+                    <div class="category-header-row" style="margin: 1.5rem 0 0.5rem 0; border-bottom: 1px solid rgba(255, 255, 255, 0.08); padding-bottom: 0.25rem; grid-column: 1 / -1;">
+                        <h4 style="color: var(--neon-blue); font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; display: flex; align-items: center; gap: 0.5rem;">
+                            <span style="display: inline-block; width: 6px; height: 6px; background-color: var(--neon-blue); border-radius: 50%;"></span>
+                            ${category}
+                        </h4>
+                    </div>
+                `;
+            }
+            
             venuesDisplay.innerHTML += `
                 <div class="venue-item">
                     <div class="venue-info">
                         <span class="venue-name-txt">${v.name}</span>
                         <a href="${formattedUrl}" target="_blank" rel="noopener noreferrer" class="venue-url-txt">${v.url}</a>
-                        <span class="type-badge">${v.type}</span>
                     </div>
                     <button class="delete-btn" onclick="deleteVenue('${v.name}')" title="Delete venue">
                         <svg viewBox="0 0 24 24"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6"/></svg>
@@ -340,8 +368,53 @@ async function saveDiscoveredVenue(index) {
     }
 }
 
+async function checkPasswordValidity() {
+    const password = localStorage.getItem('managePassword') || '';
+    const addCard = document.getElementById('card-add-manual');
+    const discoverCard = document.getElementById('card-discover-gemini');
+    const passwordSection = document.getElementById('manage-password')?.closest('.management-card');
+
+    if (!password) {
+        if (addCard) addCard.style.display = 'none';
+        if (discoverCard) discoverCard.style.display = 'none';
+        if (passwordSection) {
+            passwordSection.style.border = '1px solid rgba(0, 240, 255, 0.2)';
+            passwordSection.style.boxShadow = '0 0 15px rgba(0, 240, 255, 0.05)';
+        }
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/venues/verify-password', {
+            method: 'POST',
+            headers: {
+                'X-Manage-Password': password
+            }
+        });
+
+        if (response.ok) {
+            if (addCard) addCard.style.display = 'block';
+            if (discoverCard) discoverCard.style.display = 'block';
+            if (passwordSection) {
+                passwordSection.style.border = '1px solid #10b981';
+                passwordSection.style.boxShadow = '0 0 15px rgba(16, 185, 129, 0.15)';
+            }
+        } else {
+            if (addCard) addCard.style.display = 'none';
+            if (discoverCard) discoverCard.style.display = 'none';
+            if (passwordSection) {
+                passwordSection.style.border = '1px solid #f87171';
+                passwordSection.style.boxShadow = '0 0 15px rgba(248, 113, 113, 0.15)';
+            }
+        }
+    } catch (err) {
+        console.error('Password verification error:', err);
+    }
+}
+
 function savePassword(val) {
     localStorage.setItem('managePassword', val);
+    checkPasswordValidity();
 }
 
 // Load last successful search on page load
@@ -369,6 +442,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 pwdInput.value = savedPassword;
             }
         }
+        
+        checkPasswordValidity();
     } catch (err) {
         console.warn('Failed to load last successful search results:', err);
     }
