@@ -182,6 +182,11 @@ def discover_venues_api(client, directory, custom_details):
         return []
 
 
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
+
 @app.get("/")
 def get_index():
     """Serves the front-end dashboard with pre-rendered today's events."""
