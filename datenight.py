@@ -862,7 +862,7 @@ def generate_html_file(events, nice_date, filename):
     <div class="container">
         <header>
             <div class="logo-area">
-                <h1>Twin Cities Date Night</h1>
+                <h1>Date Night!</h1>
                 <div class="date-badge">{nice_date}</div>
             </div>
         </header>
