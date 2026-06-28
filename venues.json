@@ -293,5 +293,35 @@
         "name": "The Heights Theater",
         "url": "https://heightstheater.com/",
         "type": "Independent Cinema & Local Fairs"
+    },
+    {
+        "name": "99.3 The Current",
+        "url": "https://thecurrent.org",
+        "type": "Independent Media"
+    },
+    {
+        "name": "The Racket Freeloader Fridays",
+        "url": "https://racketmn.com",
+        "type": "Independent Media"
+    },
+    {
+        "name": "50th & France Business and Professional Association",
+        "url": "https://www.50thandfrance.com",
+        "type": "Independent Media"
+    },
+    {
+        "name": "University of Minnesota Events",
+        "url": "https://events.umn.edu",
+        "type": "Independent Media"
+    },
+    {
+        "name": "Northrop (University of Minnesota)",
+        "url": "https://northrop.umn.edu",
+        "type": "Performing Arts & Prestigious Theaters"
+    },
+    {
+        "name": "St. Catherine University Events",
+        "url": "https://www.stkate.edu",
+        "type": "Performing Arts & Prestigious Theaters"
     }
 ]
