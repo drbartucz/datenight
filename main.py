@@ -38,8 +38,8 @@ class BasicAuthMiddleware(BaseHTTPMiddleware):
         if not site_password:
             return await call_next(request)
 
-        # Skip auth for the cron endpoint (uses its own secret)
-        if request.url.path == "/api/cron/update-today":
+        # Skip auth for the healthcheck and cron endpoints
+        if request.url.path in ("/health", "/api/cron/update-today"):
             return await call_next(request)
 
         auth = request.headers.get("Authorization", "")
