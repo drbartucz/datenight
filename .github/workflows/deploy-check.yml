@@ -15,6 +15,7 @@ jobs:
       - name: Check deployment is live and has recent timestamp
         env:
           DEPLOY_URL: ${{ vars.RAILWAY_URL }}
+          SITE_PASSWORD: ${{ secrets.SITE_PASSWORD }}
         run: |
           if [ -z "$DEPLOY_URL" ]; then
             echo "::error::RAILWAY_URL repository variable is not set. Set it to your Railway deployment URL (e.g. https://your-app.up.railway.app)"
@@ -22,7 +23,12 @@ jobs:
           fi
 
           echo "Fetching homepage from $DEPLOY_URL ..."
-          BODY=$(curl -sf -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" --max-time 30 "$DEPLOY_URL") || {
+          AUTH_FLAG=""
+          if [ -n "$SITE_PASSWORD" ]; then
+            AUTH_FLAG="-u :$SITE_PASSWORD"
+          fi
+
+          BODY=$(curl -sf $AUTH_FLAG -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" --max-time 30 "$DEPLOY_URL") || {
             echo "::warning::Failed to reach $DEPLOY_URL (likely blocked by Cloudflare or server starting up). Skipping verification to prevent deployment deadlock."
             exit 0
           }
