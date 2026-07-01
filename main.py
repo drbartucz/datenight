@@ -4,10 +4,13 @@ import json
 import re
 import datetime
 import zoneinfo
+import secrets
+import base64
 from typing import Optional
-from fastapi import FastAPI, HTTPException, Header
+from fastapi import FastAPI, HTTPException, Header, Request, Response
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.base import BaseHTTPMiddleware
 from pydantic import BaseModel
 from google import genai
 from google.genai import types
@@ -27,6 +30,36 @@ from datenight import (
 )
 
 app = FastAPI(title="Twin Cities Date Night API")
+
+
+class BasicAuthMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        site_password = os.environ.get("SITE_PASSWORD", "")
+        if not site_password:
+            return await call_next(request)
+
+        # Skip auth for the cron endpoint (uses its own secret)
+        if request.url.path == "/api/cron/update-today":
+            return await call_next(request)
+
+        auth = request.headers.get("Authorization", "")
+        if auth.startswith("Basic "):
+            try:
+                decoded = base64.b64decode(auth[6:]).decode("utf-8")
+                _, password = decoded.split(":", 1)
+                if secrets.compare_digest(password, site_password):
+                    return await call_next(request)
+            except Exception:
+                pass
+
+        return Response(
+            content="Unauthorized",
+            status_code=401,
+            headers={"WWW-Authenticate": 'Basic realm="Date Night"'},
+        )
+
+
+app.add_middleware(BasicAuthMiddleware)
 
 # Ensure static directory exists
 os.makedirs("static", exist_ok=True)
